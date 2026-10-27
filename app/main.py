@@ -235,5 +235,9 @@ async def live(ws: WebSocket, mode: str):
         await SESSIONS[mode](ws, models).run()
 
 
-if __name__ == "__main__":
+def main() -> None:
     uvicorn.run(app, host=settings.host, port=settings.port, log_level="warning")
+
+
+if __name__ == "__main__":
+    main()

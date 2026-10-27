@@ -1,6 +1,6 @@
 # Practice Studio
 
-**[Try it live](https://shiivamchauhan-practice-studio.hf.space)** (free CPU, so give it a minute if it was asleep)
+**[Try it live](https://shiivamchauhan-practice-studio.hf.space)** (free hosting, so give it two minutes if it was asleep)
 
 Voice practice for the three things I'd rather avoid: **job interviews**, **phone calls** and **small talk
 with strangers**. I also stammer. Most voice AIs take a two-second block as their cue to interrupt. This one
@@ -81,9 +81,13 @@ python -m scripts.smoke_test --mode phone --report    # a fake user with a fake 
 
 ## Deploy
 
-The live demo is a free Hugging Face Space built from the [`Dockerfile`](Dockerfile). It runs in public mode:
-one visitor at a time, nothing saved, settings read-only, sessions capped at 20 minutes.
+The live demo is a free Hugging Face Space. Free accounts only get Gradio on ZeroGPU these days, so
+[`space.py`](space.py) wears a Gradio costume: it registers a GPU function that never runs (ZeroGPU won't boot
+without one), then hands the port to the real app. It runs in public mode: one visitor at a time, nothing
+saved, settings read-only, sessions capped at 20 minutes.
 
 ```powershell
 python -m scripts.deploy_space you/practice-studio --secrets   # needs HF_TOKEN in .env
 ```
+
+Anywhere that runs containers, the [`Dockerfile`](Dockerfile) does the same job without the costume.

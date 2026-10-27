@@ -1,4 +1,5 @@
-# The image behind the Hugging Face Space (free CPU tier: 2 vCPU, 16 GB). Runs anywhere Docker does:
+# For hosts that run containers (Render, Fly, a VPS, a paid Hugging Face Docker Space). The free Hugging Face
+# tier runs space.py instead.
 #   docker build -t practice-studio . && docker run -p 7860:7860 --env-file .env practice-studio
 FROM python:3.13-slim
 

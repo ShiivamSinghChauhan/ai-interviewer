@@ -1,4 +1,4 @@
-"""Publish the app as a Hugging Face Space (Docker SDK, free CPU hardware).
+"""Publish the app as a Hugging Face Space (Gradio SDK on free ZeroGPU hardware, started by space.py).
 
     pip install -r requirements-dev.txt
     python -m scripts.deploy_space you/practice-studio --secrets
@@ -17,7 +17,7 @@ from huggingface_hub import HfApi
 
 from app.config import PROVIDERS, ROOT
 
-SHIPPED = ["app", "web", "config", "scripts", "Dockerfile", "requirements.txt", "pyproject.toml"]
+SHIPPED = ["app", "web", "config", "scripts", "space.py", "requirements.txt"]
 SKIPPED = shutil.ignore_patterns("__pycache__", "*.bak", "*.pyc")
 SECRETS = [f"{provider.upper()}_API_KEYS" for provider in PROVIDERS]
 VARIABLES = ["LLM_CHAIN", "REPORT_LLM_CHAIN", "DECISIONS_CHAIN", "TTS_ENGINE", "FISH_MODEL", "ELEVENLABS_MODEL"]
@@ -26,8 +26,10 @@ title: Practice Studio
 emoji: 🎙️
 colorFrom: green
 colorTo: blue
-sdk: docker
-app_port: 7860
+sdk: gradio
+sdk_version: 6.30.0
+python_version: "3.12"
+app_file: space.py
 pinned: false
 short_description: Voice practice for interviews, calls and small talk
 ---
@@ -56,7 +58,7 @@ def main() -> None:
     args = ap.parse_args()
 
     api = HfApi(token=os.environ["HF_TOKEN"])
-    api.create_repo(args.space, repo_type="space", space_sdk="docker", exist_ok=True)
+    api.create_repo(args.space, repo_type="space", space_sdk="gradio", space_hardware="zero-a10g", exist_ok=True)
     if args.secrets:
         for name in SECRETS:
             if value := os.getenv(name):

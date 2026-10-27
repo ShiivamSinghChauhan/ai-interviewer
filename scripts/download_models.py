@@ -143,14 +143,14 @@ def extract(archive: Path) -> None:
     archive.unlink()
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--stt", default="560ms", choices=["80ms", "160ms", "560ms", "1120ms"],
                     help="Nemotron chunk size: smaller = faster partials, slightly lower accuracy")
     ap.add_argument("--kokoro", choices=["none", "fp32", "int8"], default="none",
                     help="optional offline TTS. The default edge-tts voice needs no download; int8 Kokoro "
                          "measured RTF ~3.5 on a Ryzen 5 5500U (too slow), so prefer fp32 if you want it")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     MODELS.mkdir(exist_ok=True)
     for name, url in FILES.items():
