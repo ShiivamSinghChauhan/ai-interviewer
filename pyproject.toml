@@ -1,0 +1,17 @@
+[project]
+name = "practice-studio"
+version = "1.0.0"
+description = "Voice practice for interviews, phone calls and small talk, built to be patient with stammering."
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["models", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "SIM", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

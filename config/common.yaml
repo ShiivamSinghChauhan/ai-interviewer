@@ -1,0 +1,187 @@
+# Shared settings for every mode. Edit freely; files are re-read at the start of each session.
+
+session:
+  first_token_timeout_s: 6   # live replies: switch to the next model if this one hasn't started answering
+  overtime_min: 5            # end a session this long after its planned length
+  setup_timeout_min: 20      # close a connection that never starts a session (it holds the only live slot)
+
+# Turn-taking presets (seconds). "very_patient" is tuned for stammering: blocks and repetitions
+# create long silences mid-sentence that must not be mistaken for the end of a turn.
+patience:
+  very_patient:
+    label: Very patient (stammer-friendly)
+    pause_to_check: 0.3      # silence before the turn detector runs
+    answer_gap: 2.0          # silence needed after you sound finished (long answers)
+    max_pause: 4.0           # longest silence tolerated when the signals are unsure
+    thinking_pause: 12.0     # after "let me think"
+    quick_replies: false     # reply instantly to short answers / questions
+  patient:
+    label: Patient
+    pause_to_check: 0.3
+    answer_gap: 1.4
+    max_pause: 3.2
+    thinking_pause: 10.0
+    quick_replies: false
+  normal:
+    label: Normal (like most people)
+    pause_to_check: 0.22
+    answer_gap: 0.7
+    max_pause: 2.4
+    thinking_pause: 9.0
+    quick_replies: true
+
+# Voice acting: with Fish Audio (and ElevenLabs v3/v4) the partner's text can carry [bracket] cues that the
+# voice performs but never reads aloud. Off automatically for engines that would read them.
+expressive:
+  enabled: true
+  max_cues_per_sentence: 3
+  instructions: |
+    YOUR VOICE CAN ACT. You may put short delivery cues in square brackets; the voice performs them and never
+    reads them aloud. Write them exactly like this:
+    - emotion or tone at the START of a sentence: [curious] [doubtful] [amused] [concerned] [impatient] [warm]
+      [serious] [relieved] [surprised] [in a hurry tone] [soft tone]
+    - human sounds anywhere: [sigh] [chuckling] [laughing] [clear throat] [inhale] [hmm]
+    - [emphasis] right before the one word you stress; [break] for a short pause, [long-break] for a longer one
+    Use them like a real person would: MOST replies have no cue at all; add one only where a listener would
+    clearly hear it (a sigh, a laugh, a change of tone), at most one per reply, and don't repeat the same cue in
+    back-to-back replies. The cue must fit the moment: never laugh or chuckle at bad news or at the user's
+    difficulty, and never use a cue to mock pauses or repeated words. {hint}
+
+# How the partner's voice SAYS words that TTS engines misread (captions and transcripts keep the real spelling).
+# `all` applies to every engine; an engine's own list (fish, edge, elevenlabs, kokoro) adds to it and wins.
+# Plain respellings work everywhere. Fish's <|phoneme_start|>...<|phoneme_end|> tags were tried and made
+# LoRA and vLLM sound worse on s2.1-pro-free, so they are not used.
+pronounce:
+  all:
+    Qdrant: quadrant
+    QLoRA: Q-LoRA
+    k8s: Kubernetes
+    K8s: Kubernetes
+    KV cache: K-V cache
+  kokoro:
+    QLoRA: Q Lora
+    LoRA: Lora
+    vLLM: V L L M
+    LLMs: L L Ms
+    LLM: L L M
+    GGUF: G G U F
+    GPTQ: G P T Q
+    AWQ: A W Q
+    RLHF: R L H F
+    DPO: D P O
+    GRPO: G R P O
+    SFT: S F T
+    PEFT: peft
+    RAG: rag
+    ONNX: onyx
+    PyTorch: pie torch
+    SQL: sequel
+    HNSW: H N S W
+    BM25: B M twenty five
+    MoE: M O E
+    FAISS: face
+    APIs: A P Is
+    API: A P I
+    JSON: jason
+    GPUs: G P Us
+    GPU: G P U
+    CPU: C P U
+    RoPE: rope
+    KV: K V
+    MLOps: M L ops
+    e.g.: for example
+    i.e.: that is
+    vs.: versus
+    TTFT: time to first token
+
+# accent -> edge-tts voices (all verified to exist). Used by conversation and phone modes.
+accents:
+  Indian: {male: en-IN-PrabhatNeural, female: en-IN-NeerjaNeural}
+  American: {male: en-US-AndrewNeural, female: en-US-AvaNeural}
+  British: {male: en-GB-RyanNeural, female: en-GB-SoniaNeural}
+  Australian: {male: en-AU-WilliamMultilingualNeural, female: en-AU-NatashaNeural}
+  Canadian: {male: en-CA-LiamNeural, female: en-CA-ClaraNeural}
+  Irish: {male: en-IE-ConnorNeural, female: en-IE-EmilyNeural}
+  New Zealand: {male: en-NZ-MitchellNeural, female: en-NZ-MollyNeural}
+  Nigerian: {male: en-NG-AbeoNeural, female: en-NG-EzinneNeural}
+  Kenyan: {male: en-KE-ChilembaNeural, female: en-KE-AsiliaNeural}
+  South African: {male: en-ZA-LukeNeural, female: en-ZA-LeahNeural}
+  Singaporean: {male: en-SG-WayneNeural, female: en-SG-LunaNeural}
+  Filipino: {male: en-PH-JamesNeural, female: en-PH-RosaNeural}
+
+# Fish Audio voice discovery. Public library voices are free to use via the API; they are found by accent
+# tag. Clones of real public figures and cartoon/anime/game voices are skipped (you want an unknown person).
+fish:
+  language: en
+  default_accent: Indian
+  accent_tags:
+    Indian: ["Indian Accent", "Indian English", "indian"]
+    American: ["American Accent"]
+    British: ["British Accent"]
+    Australian: ["Australian Accent"]
+    Canadian: ["Canadian Accent"]
+    Irish: ["Irish Accent"]
+    New Zealand: ["New Zealand Accent"]
+    Nigerian: ["Nigerian Accent"]
+    Kenyan: ["Kenyan Accent"]
+    South African: ["South African Accent"]
+    Singaporean: ["Singaporean Accent"]
+    Filipino: ["Filipino Accent"]
+  prefer_tags: [conversational, professional, calm, friendly, clear, measured]
+  exclude_tags: [character-voice, anime, gaming, character, egirl, ASMR, celebrity, game, cartoon, animated]
+  exclude_titles: [modi, gandhi, kohli, virat, babar, arjun das, trump, biden, obama, messi, neymar, ronaldo,
+                   shah rukh, srk, amitabh, salman, ranveer, sachin, dhoni, imran khan, elon, miku, gojo,
+                   antonelli, bonnie blue, rogan, whistledown]
+  exclude_title_words: [test, sample, copy, clone, me, my voice]
+  # generic, descriptive titles ("Indian lady voice", "male narrator") are usually not clones of a real person
+  generic_title_words: [voice, lady, woman, man, male, female, girl, boy, narrator, narration, indian, accent,
+                        english, professional, calm, friendly, teacher, customer, support, agent, assistant]
+  min_uses: 200
+  pinned: {}          # e.g. {Indian-male: <reference_id>} to always use a voice you like
+
+# ---- end-of-session speech analysis: stammering + nervousness (estimates, not a diagnosis) ----
+analysis:
+  enabled: true
+  # second transcript that keeps disfluencies: Whisper copies the style of its prompt
+  verbatim_prompt: "Umm, so, I-I-I mean, w-w-we, uh, we were, like, um... trying to, to finish it. Hmm."
+  prolongation_min_ms: 280
+  prolongation_dist_max: 1.2
+  block_min_s: 1.0               # silences this long inside a turn count as possible blocks
+  count_blocks_as_stutters: true
+  fillers: [um, uh, umm, uhh, erm, er, ah, hmm]
+  discourse_markers: [like, basically, actually, you know, i mean, sort of, kind of]
+  # % stuttered syllables -> label (rough bands for practice feedback)
+  severity_bands: [[0, "very few disfluencies"], [3, "mild"], [6, "moderate"], [10, "frequent"]]
+  # nervousness indicators: value at which the indicator reads "calm" (0) and "very nervous" (1)
+  nervousness:
+    response_latency_s: {calm: 0.8, nervous: 4.0, weight: 1.0}
+    filler_per_100_words: {calm: 1.0, nervous: 10.0, weight: 1.0}
+    pitch_raise_st: {calm: 0.0, nervous: 3.0, weight: 1.0}         # vs your mic-check baseline
+    rate_change_pct: {calm: 0.0, nervous: 30.0, weight: 0.7}        # |speaking rate - baseline|
+    quieter_db: {calm: 0.0, nervous: 6.0, weight: 0.6}              # quieter than baseline
+    short_answers_words: {calm: 25, nervous: 6, weight: 0.8}        # avg words per turn (fewer = higher)
+    long_pauses_per_min: {calm: 1.0, nervous: 8.0, weight: 0.8}
+  nervousness_bands: [[0, "calm"], [30, "slightly nervous"], [55, "nervous"], [75, "very nervous"]]
+  # optional: Jev reads each answer for hedging/apologising/trailing off
+  jev_confidence: true
+  chain: []          # empty = REPORT_LLM_CHAIN from .env
+  prompt: |
+    You are a kind, experienced speech coach. The speaker is an Indian English speaker who stammers and feels
+    anxious on calls. Below are measurements from today's {mode} session and a verbatim transcript that keeps
+    disfluencies (repetitions like "I-I", fillers like "um", "--" for broken-off words).
+
+    Measurements (estimates from audio and transcripts):
+    {metrics}
+
+    Verbatim excerpts of the speaker:
+    {excerpts}
+
+    Write a short Markdown section with:
+    1. **Stammering today**: what kinds of disfluency showed up (repetitions, prolongations, blocks), roughly
+       how often, and where they clustered (start of turns, certain words, under pressure). Stammering is not a
+       mistake; describe it neutrally.
+    2. **Nervousness**: what the signals suggest (response delay, pitch vs. their calm baseline, pace,
+       volume, fillers, very short answers) and how it changed from the start to the end of the session.
+    3. **Two or three practical things to try next time** (e.g. slower start, easy onsets, planned pauses,
+       a breath before answering). Suggest a speech-language therapist for personalised guidance.
+    Under 250 words. Be warm, specific and honest. Never shame.

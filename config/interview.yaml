@@ -1,0 +1,308 @@
+# AI interviewer. Everything here can be changed (and most of it from the setup screen per session).
+
+llm:
+  chain: []            # empty = LLM_CHAIN from .env (fast model for live turns)
+  temperature: 0.75
+  max_tokens: 400
+
+defaults:
+  candidate_name: ""
+  role: AI Engineer
+  level: mid-level
+  company: a fast-growing AI product startup
+  duration_min: 30
+  style: neutral
+  interviewer_name: Arjun
+  interviewer_gender: male      # used to auto-pick a Fish Audio voice
+  interviewer_accent: Indian
+  focus: [fundamentals, llm, rag, finetuning, inference, system_design, behavioral]
+  tts_engine: edge
+  voice: ""
+  speed: 1.0
+  patience: patient
+  manual_turns: false
+
+levels: [intern, junior, mid-level, senior, staff]
+companies:
+  - a fast-growing AI product startup
+  - a big tech company (FAANG-style loop)
+  - an Indian product company like Flipkart, Swiggy or Razorpay
+  - an IT services and consulting company
+  - an AI research lab
+
+style_cues:      # how this interviewer "acts" when the voice supports cues (Fish / ElevenLabs v4)
+  friendly: "You are warm: an occasional [warm], [chuckling] or [encouraging] fits you."
+  neutral: "You are composed and neutral: a rare [hmm], [curious] or [clear throat]; mostly no cues."
+  tough: "You are a demanding bar-raiser: a [doubtful] or [skeptical] tone when an answer is vague, a [sigh] when it misses the point, [emphasis] on the exact word you challenge."
+
+styles:
+  friendly: Warm and encouraging, but still rigorous. Offer a small hint when the candidate is stuck.
+  neutral: Professional and neutral, like a typical big-tech interviewer. Don't signal whether answers are right. Hints only when the candidate is clearly stuck.
+  tough: Demanding bar-raiser. Push hard on vague answers, challenge assumptions, ask for numbers and trade-offs, interrupt rambling politely. Rarely give hints.
+
+focus_areas:
+  fundamentals: {title: ML & deep learning fundamentals, guidance: "bias-variance, overfitting and regularization, loss functions, optimizers, evaluation metrics, embeddings, attention and the transformer architecture, tokenization, positional encodings."}
+  llm: {title: LLM internals, guidance: "how LLMs are pre-trained and aligned, decoding (temperature, top-p, beam search), context windows, KV cache, hallucinations, scaling laws, mixture of experts, prompting techniques."}
+  rag: {title: RAG & retrieval, guidance: "chunking strategies, embedding models, vector databases and HNSW, hybrid search with BM25, rerankers, query rewriting, evaluating retrieval and faithfulness, failure modes in production."}
+  finetuning: {title: Fine-tuning & alignment, guidance: "when to fine-tune vs prompt vs RAG, LoRA and QLoRA, PEFT, SFT data quality, DPO vs RLHF, catastrophic forgetting, evaluation of fine-tuned models."}
+  inference: {title: "Inference, serving & optimization", guidance: "quantization (INT8/INT4, GPTQ, AWQ, GGUF), vLLM and paged attention, continuous batching, speculative decoding, latency vs throughput trade-offs, cost control, caching, GPU memory math."}
+  agents: {title: Agents & tool use, guidance: "function calling, ReAct-style loops, planning, memory, MCP, guardrails, evaluating agents, handling tool failures and infinite loops."}
+  evals: {title: Evaluation & LLMOps, guidance: "offline vs online evals, LLM-as-a-judge and its biases, golden datasets, A/B tests, monitoring drift, observability, regression testing of prompts."}
+  ml_classic: {title: Classical ML, guidance: "linear and logistic regression, trees and gradient boosting, feature engineering, class imbalance, cross-validation, precision/recall trade-offs."}
+  system_design: {title: AI system design, guidance: "design an end-to-end production AI system: requirements, architecture, data flow, model choice, latency/cost budget, scaling, evaluation, failure handling, monitoring."}
+  behavioral: {title: Behavioral, guidance: "ownership, handling ambiguity, a failure and what they learned, disagreement with a teammate, prioritization under deadlines. Use STAR-style follow-ups."}
+
+# time split when no prep plan is generated (fractions of the interview)
+section_weights: {intro: 0.08, resume: 0.17, system_design: 0.2, behavioral: 0.1, close: 0.06, technical_total: 0.75}
+standard_sections:
+  intro: {title: Introduction, goal: "Greet, set the agenda, ask them to introduce themselves."}
+  resume: {title: Resume deep-dive, goal: "Most relevant project: what they built, decisions, metrics, what broke."}
+  close: {title: Candidate questions & close, goal: "Answer their questions briefly, explain next steps, end the interview."}
+
+# nudges the second-pass transcriber (Groq Whisper) towards the right spelling of jargon
+whisper_hint: "Terms: LoRA, QLoRA, RAG, vLLM, embeddings, quantization, KV cache, GGUF, PEFT, RLHF, DPO, BM25."
+
+# ------------------------------------------------------------------------------------------------
+# Preparation: before the interview the system studies the JD (highest priority), your resume and
+# the repositories behind your projects, then plans unique questions. Every step is optional.
+prep:
+  enabled: true
+  show_plan_to_candidate: false   # true = see the plan before starting (less realistic)
+  cache_analyses: true            # reuse JD / resume analyses when the text hasn't changed
+  cache_dir: data/prep_cache
+  history:                        # remember asked questions so every interview is different
+    enabled: true
+    dir: data/question_history
+    max_remembered: 300
+  steps:
+    jd:
+      enabled: true
+      chain: [groq:openai/gpt-oss-120b|reasoning_effort=medium, openrouter:google/gemma-4-31b-it:free, groq:qwen/qwen3.8-27b]
+      temperature: 0.3
+      max_tokens: 3000
+      prompt: |
+        You are a hiring manager preparing to interview for this job. Analyse the job description deeply.
+        Job description:
+        {jd}
+        Role: {level} {role} at {company}.
+        Return ONLY JSON:
+        {{"role_summary": "...", "must_haves": ["skills/experience the JD clearly requires, most important first"],
+          "nice_to_haves": ["..."], "seniority_signals": ["..."], "domain_and_product": "...",
+          "likely_day_to_day": ["..."], "hard_problems_this_team_faces": ["..."],
+          "interview_focus_ranked": [{{"topic": "...", "why": "...", "weight": 1-5}}]}}
+    resume:
+      enabled: true
+      chain: [groq:openai/gpt-oss-120b|reasoning_effort=medium, openrouter:google/gemma-4-31b-it:free, groq:qwen/qwen3.8-27b]
+      temperature: 0.3
+      max_tokens: 3000
+      prompt: |
+        You are preparing to interview this candidate for the job below. The JD analysis has priority: judge the
+        resume against it.
+        JD analysis: {jd_analysis}
+        Resume:
+        {resume}
+        Return ONLY JSON:
+        {{"candidate_summary": "...", "strengths_vs_jd": ["..."], "gaps_vs_jd": ["..."],
+          "projects": [{{"name": "...", "what_they_claim": ["..."], "tech": ["..."], "relevance_to_jd": "high|medium|low"}}],
+          "claims_to_verify": ["specific claims worth probing"], "seniority_estimate": "..."}}
+    repos:
+      enabled: true               # analyse the repositories you attach to projects (see `repos:` below)
+    outline:                      # stage 1: strategy - sections, time, what to probe in each
+      enabled: true
+      chain: [groq:openai/gpt-oss-120b|reasoning_effort=medium, openrouter:google/gemma-4-31b-it:free, groq:openai/gpt-oss-20b|reasoning_effort=medium]
+      temperature: 0.7
+      max_tokens: 3500
+      jd_priority: Prioritise the JD's must-haves and the team's hard problems over the resume.
+      prompt: |
+        You are a senior interviewer designing a {duration_min}-minute {style} interview for a {level} {role} at
+        {company}. Think deeply about what would truly reveal whether this candidate can do THIS job.
+        {jd_priority}
+
+        JD analysis: {jd_analysis}
+        Candidate analysis: {resume_analysis}
+        What we learned from the candidate's project repositories: {repo_reports}
+        Requested focus areas: {focus}
+
+        Plan the sections only (questions come later). Start with a short introduction, end with candidate
+        questions & close. For every main section list concrete angles: specific JD problems, specific claims or
+        code from their projects, scenarios with numbers.
+        Return ONLY JSON:
+        {{"opening_context": "one line framing the role",
+          "sections": [{{"title": "...", "minutes": 0.0, "goal": "...", "angles": ["..."]}}],
+          "red_flags_to_probe": ["..."]}}
+    questions:                    # stage 2: one call per section, high temperature for fresh questions
+      enabled: true
+      chain: [groq:openai/gpt-oss-120b|reasoning_effort=low, groq:openai/gpt-oss-20b|reasoning_effort=low, openrouter:google/gemma-4-31b-it:free, openrouter:google/gemma-4-26b-a4b-it:free]
+      temperature: 1.0            # high = more varied, unique questions
+      top_p: 0.95
+      max_tokens: 2500
+      per_section: 4              # main questions per technical section (intro gets 1-2, close gets 0-1)
+      kinds:
+        first: "warm-up introduction: a friendly, light opener asking them to introduce themselves, with one specific hook from their background. No technical deep-dive yet."
+        last: "closing: invite their questions about the team and role. No technical question."
+        main: "main technical/behavioural section"
+      prompt: |
+        Write interview questions for ONE section of a {level} {role} interview at {company}.
+        Section: {title} ({minutes} min). Goal: {goal}
+        Angles to cover: {angles}
+        Must-haves from the JD: {must_haves}
+        Candidate summary: {candidate}
+        Questions already planned for other sections (don't overlap): {planned}
+        Questions this candidate was asked in earlier sessions (do NOT repeat or reword): {avoid}
+        Variety seed: {seed} - use it to pick unusual angles, concrete scenarios and specific numbers.
+
+        Section type: {kind}
+        Write {n} questions. Specific and fresh (no textbook "what is X" openers), tied to the JD's real problems or
+        the candidate's own work, escalating in depth.
+        - Spoken style: at most ~35 words and ONE question per item (put extra parts in follow_ups).
+        - Only mention facts about the candidate that appear above (summary, angles); never invent model sizes,
+          numbers or tools they did not mention. Hypothetical scenarios are fine if framed as "imagine...".
+        Return ONLY JSON:
+        {{"questions": [{{"q": "...", "why": "...", "follow_ups": ["...", "..."], "strong_answer": ["...", "...", "..."]}}]}}
+    critique:
+      enabled: true
+      chain: [groq:openai/gpt-oss-20b|reasoning_effort=medium, openrouter:google/gemma-4-31b-it:free, groq:qwen/qwen3.8-27b]
+      temperature: 0.4
+      max_tokens: 3000
+      prompt: |
+        Review this interview plan as a bar-raiser. Find the weakest questions: generic, repeating earlier
+        sessions, ignoring the JD's must-haves, unanswerable in the time, or missing follow-ups. Replace at most
+        {max_changes} of them. Return ONLY JSON (changes only, not the whole plan):
+        {{"replacements": [{{"section": <section number from 1>, "question": <question number from 1>,
+                             "new": {{"q": "...", "why": "...", "follow_ups": ["..."], "strong_answer": ["..."]}}}}],
+          "notes": "one line on what was wrong"}}
+        JD must-haves: {must_haves}
+        Earlier questions to avoid: {avoid}
+        Plan (numbered):
+        {plan}
+      max_changes: 4
+
+# Repository analysis (cached per repo + commit in data/repo_reports; re-used across interviews)
+repos:
+  reuse_cached: true
+  reuse_if_newer_commit: true   # reuse an existing report even if the repo has new commits
+  max_age_days: 120             # older reports are re-analysed
+  workdir: data/repos
+  reports_dir: data/repo_reports
+  clone_depth: 1
+  blob_limit: 512k              # skip big binary blobs while cloning
+  timeout_s: 600
+  include_ext: [.py, .ipynb, .js, .ts, .tsx, .go, .rs, .java, .kt, .cpp, .c, .h, .cs, .rb, .php, .scala, .sql,
+                .md, .rst, .txt, .toml, .yaml, .yml, .json, .cfg, .ini, .sh, .dockerfile]
+  include_names: [Dockerfile, Makefile, requirements.txt, pyproject.toml, setup.py, package.json, README, LICENSE]
+  exclude_dirs: [.git, node_modules, venv, .venv, env, __pycache__, dist, build, .next, target, vendor, data,
+                 datasets, checkpoints, models, weights, .idea, .vscode, site-packages, migrations]
+  max_files: 400
+  max_file_chars: 6000
+  digest_max_chars: 60000
+  single_pass_max_chars: 120000   # digests up to this size go to one big-context model call
+  map_chunk_chars: 10000          # otherwise: summarise in chunks (fits Groq's 8K tokens/min free tier)
+  chain: [openrouter:google/gemma-4-31b-it:free, groq:openai/gpt-oss-120b|reasoning_effort=medium, groq:qwen/qwen3.8-27b]
+  map_chain: [groq:qwen/qwen3.8-27b, groq:openai/gpt-oss-20b|reasoning_effort=low, openrouter:google/gemma-4-26b-a4b-it:free]
+  temperature: 0.3
+  max_tokens: 4000
+  map_prompt: |
+    These are files from a candidate's project repository ({repo}). Summarise what they show: purpose,
+    components, notable techniques (especially ML/AI), code quality signals, anything impressive or weak.
+    Be concrete (file names, functions, libraries). Under 250 words.
+    {files}
+  prompt: |
+    You are a senior engineer preparing to interview the author of this repository ({repo}).
+    {material}
+    Return ONLY JSON:
+    {{"summary": "2-3 sentences", "tech_stack": ["..."], "architecture": "...",
+      "ml_ai_details": "models, data, training, evaluation, serving - whatever applies",
+      "strengths": ["..."], "weaknesses_or_risks": ["..."], "claims_to_verify": ["..."],
+      "deep_questions": [{{"q": "...", "strong_answer": ["..."]}}]}}
+
+# ------------------------------------------------------------------------------------------------
+persona: |
+  You are {interviewer}, a senior engineer at {company}, running a LIVE VOICE interview with {name} for a {level} {role} position.
+
+  How you speak (everything you write is converted to speech):
+  - Sound like a real human interviewer on a call: short natural sentences, contractions, occasional "okay", "right", "got it". No markdown, lists, emojis, code, or headings. Say symbols in words ("O of n log n").
+  - Ask exactly ONE question per turn, usually one to three sentences. Never answer your own question, never lecture, never summarize their answer back at length.
+  - Briefly acknowledge what they said before the next question, varied and neutral ("Okay, makes sense.", "Hmm, interesting.", "Got it."). Don't praise every answer and don't reveal whether it was correct.
+  - Interview like a strong engineer: follow up on THEIR words. Ask why, ask for trade-offs, numbers, failure modes, how they measured it, what they'd do at 10x scale. If vague, ask for a concrete example. If something is wrong, probe it with a pointed question instead of correcting.
+  - Use the planned questions below as your backbone, in your own words, but improvise follow-ups.
+  - If they ask you to repeat or clarify, do it concisely. If they say they don't know, respond neutrally and either give a small nudge or move on.
+  - The candidate stammers. Pauses and repeated words are not hesitation about the content; never comment on them or finish their sentences.
+  - Their words come from live speech recognition and may contain transcription errors, especially technical terms (e.g. "Laura" means LoRA). Silently interpret the intended term. Never mention transcription.
+  Style: {style}
+
+  {context}
+  Interview plan ({duration} minutes total):
+  {plan}
+  Current section: {current} - about {spent:.0f} of {budget:.0f} planned minutes used. Total time left: {left:.0f} minutes.
+  {pace}
+  {section_detail}
+  {notes}
+  After your spoken reply, on a NEW line, write exactly:
+  ##META {{"advance": <true if this message moves on to the next section>, "end": <true only if this message ends the interview>}}
+
+opening: "[The call has just connected. Greet {name}, introduce yourself in one line, say this will be about {duration} minutes, then ask them to introduce themselves. Keep it under 60 words.]"
+
+nudges:              # canned lines after long silences; set to [] to disable
+  - {after_s: 20, lines: ["Take your time.", "No rush, take a moment."]}
+  - {after_s: 50, lines: ["Would you like me to repeat the question, or shall we move on?"]}
+
+assessment:
+  enabled: true      # Jev scores every answer in the background (needs JEV or SCALEDOWN keys)
+  min_words: 8
+  questions:         # Jev / ScaleDown decision questions (types: score, noul, choice)
+    correctness:
+      type: score
+      instructions: How technically correct is the candidate's answer to the interviewer's question?
+      criteria: [Incorrect or no real answer, Partially correct with notable errors, Mostly correct, Correct and precise]
+    depth:
+      type: score
+      instructions: "How deep is the answer: does it show real understanding, trade-offs and first-hand experience?"
+      criteria: [Superficial or buzzwords only, Some depth, Solid depth with trade-offs, "Expert depth with nuance, numbers and trade-offs"]
+    communication:
+      type: score
+      instructions: How clearly and concisely is the answer communicated? Ignore repeated words (the candidate stammers).
+      criteria: [Unclear or rambling, Understandable but unstructured, Clear and structured, "Crisp, structured and concise"]
+    on_topic:
+      type: noul
+      instructions: The candidate actually addressed the question that was asked.
+      criteria: {"true": The answer responds to the question asked, "false": "The answer dodges, misunderstands, or ignores the question"}
+    next_move:
+      type: choice
+      instructions: What should a strong interviewer do next?
+      criteria:
+        probe_deeper: Answer is decent; dig one level deeper into the same topic
+        ask_example: Answer is vague or generic; ask for a concrete example or numbers
+        challenge: Answer contains a questionable or wrong claim; challenge it with a pointed question
+        give_hint: Candidate is stuck or lost; offer a small hint
+        move_on: Topic is sufficiently covered; move to the next question or topic
+
+memory:
+  summarizer: scaledown   # scaledown | llm
+  trigger: 16
+  keep: 8
+  prompt: "These are notes from an ongoing technical interview. Summarize for the interviewer: topics and questions covered, key claims the candidate made, strengths and weak spots. Use short bullet points."
+
+report:
+  chain: []
+  prompt: |
+    You are an experienced hiring manager writing a candid post-interview evaluation for a mock interview.
+    Role: {level} {role} at {company}. Candidate: {name}. Duration: {minutes:.0f} minutes.
+    What the job needs most (from the JD analysis): {must_haves}
+
+    The candidate stammers. NEVER lower any score for stammering, pauses, repeated or broken-off words, or answers
+    that were split by a pause; judge only content, reasoning and structure.
+    Transcript (candidate answers come from speech recognition; ignore transcription glitches):
+    {transcript}
+
+    Planned questions with what strong answers cover:
+    {rubric}
+
+    Per-answer automatic scores (1-4 scale, from a calibrated decision model):
+    {scores}
+
+    Write the report in Markdown:
+    1. **Verdict**: Strong Hire / Hire / Lean Hire / Lean No Hire / No Hire, with a 2-3 sentence rationale tied to the JD.
+    2. **Scorecard**: a table rating 1-5 for Technical depth, Correctness, Problem solving, Communication, Practical experience, JD fit, with one-line evidence each.
+    3. **Question-by-question**: the question, a one-line summary of the answer, what a strong answer includes (use the rubric), what was missing or wrong.
+    4. **Top 5 improvements**: concrete and ordered by impact on getting this job.
+    Be specific and honest; this is for practice, so don't sugar-coat.
