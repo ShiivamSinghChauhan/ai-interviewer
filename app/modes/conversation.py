@@ -1,11 +1,12 @@
-"""Small talk (or deep talk) with a stranger you design: accent, age, job, mood, how chatty they are."""
+"""A persona agent you design: who they are, their accent, job and personality, and what the conversation is for
+(a support call, a sales pitch, a role-play, language practice or just a chat)."""
 import random
 
 from app.config import load
 from app.core.session import BaseSession, patience_labels
 
 CHOICES = {"mode": "modes", "scene": "scenes", "relationship": "relationships", "level": "levels",
-           "length": "lengths", "corrections": "corrections"}  # persona field -> table in conversation.yaml
+           "length": "lengths", "corrections": "corrections"}  # setup field -> table in conversation.yaml
 
 
 def options() -> dict:
@@ -38,7 +39,7 @@ class ConversationSession(BaseSession):
 
     async def setup(self, msg: dict) -> None:
         self.cfg = cfg = load("conversation", msg.get("overrides"))
-        chosen = {k: v for k, v in (msg.get("persona") or {}).items() if v not in (None, "")}
+        chosen = {k: v for k, v in (msg.get("setup") or {}).items() if v not in (None, "")}
         persona = {**cfg["defaults"], **chosen}
         persona["traits"] = {t: max(1, min(5, int((persona.get("traits") or {}).get(t, 3)))) for t in cfg["traits"]}
         for key, table in CHOICES.items():

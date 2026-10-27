@@ -1,40 +1,37 @@
-// End-of-session report: mode feedback + speech & confidence (tiles, per-turn charts, coach notes).
+// End-of-session report: the agent's report, then the delivery metrics (tiles and per-answer charts).
 const Report = {
   render(m) {
     $("#report-status").textContent = "";
-    $("#report-title").textContent = { interview: "Interview report", conversation: "Your feedback", phone: "Call debrief" }[S.mode] || "Report";
-    $("#report").innerHTML = markdown(m.markdown || "");
-    const sp = m.speech || {};
-    if (sp.stammer) {
-      $("#speech-h").classList.remove("hidden");
-      this.tiles(sp);
-      const turns = sp.per_turn || [];
-      $("#speech-charts").innerHTML = "";
-      if (turns.length) {
-        this.columns("#speech-charts", "Stuttered syllables per turn (%)", turns.map((t) => ({ x: t.turn, y: t.pct_ss })), (v) => v.toFixed(1) + "%");
-        const lat = turns.filter((t) => t.latency !== null && t.latency !== undefined);
-        if (lat.length) this.columns("#speech-charts", "Time before you started speaking (s)", lat.map((t) => ({ x: t.turn, y: t.latency })), (v) => v.toFixed(1) + " s");
-      }
+    if (m.submitted) {  // a session link: the report goes to whoever created the session
+      $("#report-title").textContent = "All done";
+      $("#report").innerHTML = "<p>Thank you! The session has been submitted. You can close this tab.</p>";
+      return;
     }
-    $("#speech-report").innerHTML = markdown(m.speech_markdown || "");
+    $("#report-title").textContent = { interview: "Interview report", conversation: "Conversation summary", phone: "Call summary" }[S.mode] || "Report";
+    $("#report").innerHTML = markdown(m.markdown || "");
+    const d = m.delivery || {};
+    const turns = d.per_turn || [];
+    for (const id of ["#delivery-h", "#delivery-note"]) $(id).classList.toggle("hidden", !d.answers);
+    $("#delivery-tiles").innerHTML = d.answers ? this.tiles(d) : "";
+    $("#delivery-charts").innerHTML = "";
+    if (turns.length) {
+      const lat = turns.filter((t) => t.latency !== null && t.latency !== undefined);
+      if (lat.length) this.columns("#delivery-charts", "Response time per answer (s)", lat.map((t) => ({ x: t.turn, y: t.latency })), (v) => v.toFixed(1) + " s");
+      this.columns("#delivery-charts", "Words per answer", turns.map((t) => ({ x: t.turn, y: t.words })), (v) => String(Math.round(v)));
+    }
     $("#report-folder").textContent = m.folder ? `Saved to ${m.folder}` : "";
   },
 
-  tiles(sp) {
-    const st = sp.stammer, nv = sp.nervousness || {}, tr = sp.trend;
-    const lat = (nv.indicators || {}).response_latency_s;
+  tiles(d) {
     const tiles = [
-      [`${st.pct_syllables_stuttered}%`, `syllables with a stammer - ${st.label}`],
-      [nv.score !== undefined && nv.score !== null ? `${nv.score}/100` : "-", `nervousness - ${nv.label || "not enough data"}`],
-      [lat ? `${lat.value.toFixed(1)} s` : "-", "typical delay before you spoke"],
-      [st.repetitions_part_word + st.repetitions_whole_word, "repetitions"],
-      [st.possible_blocks, "long pauses / possible blocks"],
-      [st.possible_prolongations, "possible prolongations"],
-      [st.fillers, "fillers (um, uh)"],
+      [d.words_per_minute, "words per minute of speech"],
+      [d.response_time_s !== null && d.response_time_s !== undefined ? `${d.response_time_s.toFixed(1)} s` : "-", "typical response time"],
+      [d.words_per_answer, "words per answer"],
+      [d.long_pauses_per_min, "long pauses per minute"],
+      [d.fillers_per_100_words, "fillers per 100 words"],
+      [`${Math.round(d.talk_time_s / 6) / 10} min`, "talk time"],
     ];
-    if (tr && tr.first_half !== null && tr.second_half !== null)
-      tiles.push([`${tr.first_half} → ${tr.second_half}`, "nervousness, first half → second half"]);
-    $("#speech-tiles").innerHTML = tiles.map(([v, k]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("");
+    return tiles.map(([v, k]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("");
   },
 
   // single-series column chart: thin columns, 4px rounded tops, recessive grid, hover tooltip, table view

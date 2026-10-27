@@ -5,11 +5,11 @@ session:
   overtime_min: 5            # end a session this long after its planned length
   setup_timeout_min: 20      # close a connection that never starts a session (it holds the only live slot)
 
-# Turn-taking presets (seconds). "very_patient" is tuned for stammering: blocks and repetitions
-# create long silences mid-sentence that must not be mistaken for the end of a turn.
+# Turn-taking presets (seconds). "very_patient" suits people who pause a lot mid-sentence (thinking, a second
+# language, a stammer): those silences must not be mistaken for the end of a turn.
 patience:
   very_patient:
-    label: Very patient (stammer-friendly)
+    label: Very patient (long pauses are fine)
     pause_to_check: 0.3      # silence before the turn detector runs
     answer_gap: 2.0          # silence needed after you sound finished (long answers)
     max_pause: 4.0           # longest silence tolerated when the signals are unsure
@@ -139,49 +139,10 @@ fish:
   min_uses: 200
   pinned: {}          # e.g. {Indian-male: <reference_id>} to always use a voice you like
 
-# ---- end-of-session speech analysis: stammering + nervousness (estimates, not a diagnosis) ----
+# ---- delivery metrics for the person talking to the agent (pace, response time, pauses, fillers) ----
 analysis:
   enabled: true
-  # second transcript that keeps disfluencies: Whisper copies the style of its prompt
-  verbatim_prompt: "Umm, so, I-I-I mean, w-w-we, uh, we were, like, um... trying to, to finish it. Hmm."
-  prolongation_min_ms: 280
-  prolongation_dist_max: 1.2
-  block_min_s: 1.0               # silences this long inside a turn count as possible blocks
-  count_blocks_as_stutters: true
+  # Whisper's second transcript keeps fillers when its prompt has them (it copies the prompt's style)
+  verbatim_prompt: "Umm, so, uh, we were, like, um... trying to finish it. Hmm."
+  long_pause_s: 1.0                  # silences this long inside an answer count as long pauses
   fillers: [um, uh, umm, uhh, erm, er, ah, hmm]
-  discourse_markers: [like, basically, actually, you know, i mean, sort of, kind of]
-  # % stuttered syllables -> label (rough bands for practice feedback)
-  severity_bands: [[0, "very few disfluencies"], [3, "mild"], [6, "moderate"], [10, "frequent"]]
-  # nervousness indicators: value at which the indicator reads "calm" (0) and "very nervous" (1)
-  nervousness:
-    response_latency_s: {calm: 0.8, nervous: 4.0, weight: 1.0}
-    filler_per_100_words: {calm: 1.0, nervous: 10.0, weight: 1.0}
-    pitch_raise_st: {calm: 0.0, nervous: 3.0, weight: 1.0}         # vs your mic-check baseline
-    rate_change_pct: {calm: 0.0, nervous: 30.0, weight: 0.7}        # |speaking rate - baseline|
-    quieter_db: {calm: 0.0, nervous: 6.0, weight: 0.6}              # quieter than baseline
-    short_answers_words: {calm: 25, nervous: 6, weight: 0.8}        # avg words per turn (fewer = higher)
-    long_pauses_per_min: {calm: 1.0, nervous: 8.0, weight: 0.8}
-  nervousness_bands: [[0, "calm"], [30, "slightly nervous"], [55, "nervous"], [75, "very nervous"]]
-  # optional: Jev reads each answer for hedging/apologising/trailing off
-  jev_confidence: true
-  chain: []          # empty = REPORT_LLM_CHAIN from .env
-  prompt: |
-    You are a kind, experienced speech coach. The speaker is an Indian English speaker who stammers and feels
-    anxious on calls. Below are measurements from today's {mode} session and a verbatim transcript that keeps
-    disfluencies (repetitions like "I-I", fillers like "um", "--" for broken-off words).
-
-    Measurements (estimates from audio and transcripts):
-    {metrics}
-
-    Verbatim excerpts of the speaker:
-    {excerpts}
-
-    Write a short Markdown section with:
-    1. **Stammering today**: what kinds of disfluency showed up (repetitions, prolongations, blocks), roughly
-       how often, and where they clustered (start of turns, certain words, under pressure). Stammering is not a
-       mistake; describe it neutrally.
-    2. **Nervousness**: what the signals suggest (response delay, pitch vs. their calm baseline, pace,
-       volume, fillers, very short answers) and how it changed from the start to the end of the session.
-    3. **Two or three practical things to try next time** (e.g. slower start, easy onsets, planned pauses,
-       a breath before answering). Suggest a speech-language therapist for personalised guidance.
-    Under 250 words. Be warm, specific and honest. Never shame.

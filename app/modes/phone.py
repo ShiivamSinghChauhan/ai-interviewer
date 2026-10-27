@@ -1,8 +1,8 @@
-"""Phone calls: a stranger rings you with their own agenda, or you have to call someone and get a thing done.
+"""Phone agents: the agent calls the person (outbound: a delivery, an appointment, a verification), or the person
+calls the agent's line (inbound: a clinic, a restaurant, customer support). Phone-line audio included.
 
-Scenarios in config/phone.yaml are only seeds. A generator at high temperature invents the actual caller, facts
-and twist for every call, so the delivery guy is never the same delivery guy twice. The caller hangs up by
-sending `##META {"end": true}`.
+Scenarios in config/phone.yaml are only seeds. A generator invents the concrete call (names, facts, a complication)
+every time, so no two calls are the same. The agent hangs up by sending `##META {"end": true}`.
 """
 import json
 import logging
@@ -88,7 +88,8 @@ class PhoneSession(BaseSession):
         try:
             call = await complete_json([{"role": "user", "content": prompt}],
                                        generator.get("chain") or settings.report_chain,
-                                       generator.get("temperature", 1.1), 1200, retries=0)
+                                       generator.get("temperature", 1.1), generator.get("max_tokens", 3000),
+                                       retries=0)
         except LLMUnavailable as e:
             log.warning("couldn't invent the call (%s); using the scenario as it is", e)
             call = {}
@@ -150,7 +151,7 @@ class PhoneSession(BaseSession):
         caller = self.call["caller_name"]
         return await self.write_report(report, report["prompt"].format(
             scenario=json.dumps({"title": self.scenario["title"], **self.call}), direction=self.scenario["direction"],
-            transcript=transcript.replace("Partner:", f"{caller}:").replace("User:", "You:")[:40000],
+            transcript=transcript.replace("Partner:", f"{caller}:").replace("User:", "Person:")[:40000],
             success="; ".join(map(str, self.call.get("success_criteria", []))) or self.call["end_when"]))
 
     def extra_record(self) -> dict:

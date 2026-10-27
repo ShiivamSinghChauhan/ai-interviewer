@@ -1,4 +1,5 @@
-# AI interviewer. Everything here can be changed (and most of it from the setup screen per session).
+# Interviewer agent: screens candidates by voice from the JD, their resume and their repositories, scores every
+# answer and writes a hiring-manager report. Everything here can be changed (most of it per session).
 
 llm:
   chain: []            # empty = LLM_CHAIN from .env (fast model for live turns)
@@ -63,7 +64,7 @@ standard_sections:
 whisper_hint: "Terms: LoRA, QLoRA, RAG, vLLM, embeddings, quantization, KV cache, GGUF, PEFT, RLHF, DPO, BM25."
 
 # ------------------------------------------------------------------------------------------------
-# Preparation: before the interview the system studies the JD (highest priority), your resume and
+# Preparation: before the interview the agent studies the JD (highest priority), the candidate's resume and
 # the repositories behind your projects, then plans unique questions. Every step is optional.
 prep:
   enabled: true
@@ -106,7 +107,7 @@ prep:
           "projects": [{{"name": "...", "what_they_claim": ["..."], "tech": ["..."], "relevance_to_jd": "high|medium|low"}}],
           "claims_to_verify": ["specific claims worth probing"], "seniority_estimate": "..."}}
     repos:
-      enabled: true               # analyse the repositories you attach to projects (see `repos:` below)
+      enabled: true               # analyse the repositories attached to projects (see `repos:` below)
     outline:                      # stage 1: strategy - sections, time, what to probe in each
       enabled: true
       chain: [groq:openai/gpt-oss-120b|reasoning_effort=medium, openrouter:google/gemma-4-31b-it:free, groq:openai/gpt-oss-20b|reasoning_effort=medium]
@@ -226,7 +227,7 @@ persona: |
   - Interview like a strong engineer: follow up on THEIR words. Ask why, ask for trade-offs, numbers, failure modes, how they measured it, what they'd do at 10x scale. If vague, ask for a concrete example. If something is wrong, probe it with a pointed question instead of correcting.
   - Use the planned questions below as your backbone, in your own words, but improvise follow-ups.
   - If they ask you to repeat or clarify, do it concisely. If they say they don't know, respond neutrally and either give a small nudge or move on.
-  - The candidate stammers. Pauses and repeated words are not hesitation about the content; never comment on them or finish their sentences.
+  - Pauses, filler words and repeated words are normal in speech and say nothing about the content; never comment on them or finish their sentences.
   - Their words come from live speech recognition and may contain transcription errors, especially technical terms (e.g. "Laura" means LoRA). Silently interpret the intended term. Never mention transcription.
   Style: {style}
 
@@ -260,7 +261,7 @@ assessment:
       criteria: [Superficial or buzzwords only, Some depth, Solid depth with trade-offs, "Expert depth with nuance, numbers and trade-offs"]
     communication:
       type: score
-      instructions: How clearly and concisely is the answer communicated? Ignore repeated words (the candidate stammers).
+      instructions: How clearly and concisely is the answer communicated? Ignore filler words, repeated words and pauses.
       criteria: [Unclear or rambling, Understandable but unstructured, Clear and structured, "Crisp, structured and concise"]
     on_topic:
       type: noul
@@ -285,12 +286,12 @@ memory:
 report:
   chain: []
   prompt: |
-    You are an experienced hiring manager writing a candid post-interview evaluation for a mock interview.
+    You are an experienced hiring manager writing a candid post-interview evaluation of a screening interview.
     Role: {level} {role} at {company}. Candidate: {name}. Duration: {minutes:.0f} minutes.
     What the job needs most (from the JD analysis): {must_haves}
 
-    The candidate stammers. NEVER lower any score for stammering, pauses, repeated or broken-off words, or answers
-    that were split by a pause; judge only content, reasoning and structure.
+    NEVER lower any score for accent, pauses, filler words, repeated or broken-off words, or answers that were split
+    by a pause; judge only content, reasoning and structure.
     Transcript (candidate answers come from speech recognition; ignore transcription glitches):
     {transcript}
 
@@ -304,5 +305,6 @@ report:
     1. **Verdict**: Strong Hire / Hire / Lean Hire / Lean No Hire / No Hire, with a 2-3 sentence rationale tied to the JD.
     2. **Scorecard**: a table rating 1-5 for Technical depth, Correctness, Problem solving, Communication, Practical experience, JD fit, with one-line evidence each.
     3. **Question-by-question**: the question, a one-line summary of the answer, what a strong answer includes (use the rubric), what was missing or wrong.
-    4. **Top 5 improvements**: concrete and ordered by impact on getting this job.
-    Be specific and honest; this is for practice, so don't sugar-coat.
+    4. **Risks and follow-ups**: what to verify in the next round, as concrete questions.
+    5. **Feedback for the candidate**: three specific, kind and useful points they could act on.
+    Be specific, fair and honest; quote the candidate where it helps.

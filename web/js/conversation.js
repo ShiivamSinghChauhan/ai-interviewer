@@ -1,4 +1,4 @@
-// Conversation partner setup: persona builder with presets, surprise and saved people.
+// Persona agent setup: who the agent is, with presets, a random one and saved agents.
 const Conversation = {
   opts: null, voice: null, interests: [],
   async init() {
@@ -71,7 +71,7 @@ const Conversation = {
     return { ...p, ...this.voice() };
   },
   renderSaved() {
-    $("#cv-saved").innerHTML = `<option value="">My people…</option>` + Object.keys(store.get("tp_saved", {})).map((k) => `<option>${esc(k)}</option>`).join("");
+    $("#cv-saved").innerHTML = `<option value="">Saved agents…</option>` + Object.keys(store.get("tp_saved", {})).map((k) => `<option>${esc(k)}</option>`).join("");
   },
   save() {
     const p = this.collect(), all = store.get("tp_saved", {}), key = `${p.name} (${p.occupation})`;
@@ -80,11 +80,14 @@ const Conversation = {
   async start() {
     const p = this.collect();
     store.set("tp_last", p);
+    await this.launch(p);
+  },
+  async launch(p) {
     $("#avatar-initials").textContent = (p.name || "?")[0].toUpperCase();
     $("#partner-label").textContent = `${p.name}, ${p.age} · ${p.occupation}`;
     $("#room-sub").textContent = this.opts.scenes[p.scene] || "";
-    $("#live-manual").checked = p.manual_turns;
+    $("#live-manual").checked = !!p.manual_turns;
     S.handlers = {};
-    if (await beginSetup({ persona: p }, { headphones: p.headphones })) $("#live-patience").value = p.patience;
+    if (await beginSetup({ setup: p }, { headphones: p.headphones })) $("#live-patience").value = p.patience;
   },
 };

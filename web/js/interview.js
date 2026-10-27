@@ -1,4 +1,4 @@
-// AI interview setup: role, JD, resume, project repositories and preparation options.
+// Interviewer agent setup: role, JD, the candidate's resume and repositories, preparation options.
 const Interview = {
   opts: null, voice: null,
   async init() {
@@ -40,9 +40,9 @@ const Interview = {
 
   async findProjects() {
     const resume = $("#iv-resume").value;
-    if (!resume.trim()) return alert("Paste your resume first.");
+    if (!resume.trim()) return alert("Paste the resume first.");
     const btn = $("#iv-find-projects");
-    btn.disabled = true; btn.textContent = "Reading your resume…";
+    btn.disabled = true; btn.textContent = "Reading the resume…";
     try {
       const ps = await fetch("/api/interview/projects", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resume }) }).then((r) => r.json());
@@ -50,7 +50,7 @@ const Interview = {
       for (const p of ps) if (!have.has((p.name || "").toLowerCase()))
         this.addRepo(p.name, (p.links || []).find((l) => /github|gitlab|bitbucket/.test(l)) || "");
       if (!ps.length) alert("No projects found - add repositories manually.");
-    } finally { btn.disabled = false; btn.textContent = "Find projects in my resume"; }
+    } finally { btn.disabled = false; btn.textContent = "Find projects in the resume"; }
   },
 
   async start() {
@@ -70,12 +70,17 @@ const Interview = {
       repos: { reuse_cached: $("#iv-reuse").checked },
     };
     store.set("iv_last", { ...setup, repos: repos.map(({ project, source }) => ({ project, source })) });
+    await this.launch(setup, { repos, overrides, prep: $("#iv-prep").checked });
+  },
+
+  // also the entry point for a session link, where the server already holds the repos and overrides
+  async launch(setup, { repos = [], overrides = {}, prep = true } = {}) {
     $("#avatar-initials").textContent = (setup.interviewer_name || "A")[0].toUpperCase();
     $("#partner-label").textContent = `${setup.interviewer_name || "Interviewer"} · Interviewer`;
     $("#room-sub").textContent = "Introduction";
-    $("#live-manual").checked = v.manual_turns;
+    $("#live-manual").checked = !!setup.manual_turns;
     S.handlers = {};
-    if (await beginSetup({ setup, repos, overrides }, { headphones: v.headphones, prep: $("#iv-prep").checked }))
-      $("#live-patience").value = v.patience;
+    if (await beginSetup({ setup, repos, overrides }, { headphones: setup.headphones, prep }))
+      $("#live-patience").value = setup.patience || "patient";
   },
 };

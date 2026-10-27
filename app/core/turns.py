@@ -1,7 +1,7 @@
 """Who is talking, and are they done? Runs in its own thread, because every model call here blocks.
 
-The hard part is not cutting off someone who stammers. A pause is not the end of a turn, so three signals
-vote, cheapest first:
+The hard part is not cutting people off. People pause to think, restart sentences or get stuck on a word, and
+a pause is not the end of a turn, so three signals vote, cheapest first:
   1. silence from Silero VAD (32 ms frames)
   2. Smart Turn on the audio: did they *sound* finished?
   3. Jev on the transcript: is the *thought* finished? (only asked when 2 isn't sure, or for long answers)
@@ -39,8 +39,8 @@ GATE_MIN_S = 0.8                       # the voice match needs about this much a
 TURN_DONE_QUESTION = {
     "done": decisions.noul(
         "The speaker has finished their thought and expects the other person to reply now. "
-        "Note: the speaker stammers, so repeated words, broken-off words and long pauses are normal "
-        "and do NOT mean they are finished.",
+        "Note: people pause to think, repeat words and break off words mid-sentence; that does NOT mean "
+        "they are finished.",
         "Finished; the other person should reply now",
         "Still mid-thought: the sentence or idea is incomplete and they will likely continue"),
 }
@@ -67,8 +67,8 @@ class TurnConfig:
     max_pause: float = 4.0       # longest silence tolerated when the signals disagree
     thinking_pause: float = 10.0
     manual: bool = False         # only Space ends the turn
-    block_pause: float = 1.0     # pauses this long inside a turn are recorded as possible blocks
-    quick_replies: bool = False  # off: a short phrase may just be the start of a block
+    long_pause: float = 1.0      # pauses this long inside a turn are recorded
+    quick_replies: bool = False  # off: a short phrase may just be the start of a longer answer
 
 
 @dataclass
@@ -238,7 +238,7 @@ class AudioWorker(threading.Thread):
         t.frames.append(frame)
         t.pending.append(frame)
         if p >= SPEECH_PROB:
-            if t.silence_frames * FRAME_SEC >= self.cfg.block_pause:
+            if t.silence_frames * FRAME_SEC >= self.cfg.long_pause:
                 t.pauses.append(round(t.silence_frames * FRAME_SEC, 2))
             if t.silence_frames >= 4:  # they carried on after a pause: earlier verdicts are stale
                 t.smart_turn, t.semantic_job, t.semantic = None, None, None

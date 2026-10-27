@@ -22,7 +22,7 @@ SKIPPED = shutil.ignore_patterns("__pycache__", "*.bak", "*.pyc")
 SECRETS = [f"{provider.upper()}_API_KEYS" for provider in PROVIDERS]
 VARIABLES = ["LLM_CHAIN", "REPORT_LLM_CHAIN", "DECISIONS_CHAIN", "TTS_ENGINE", "FISH_MODEL", "ELEVENLABS_MODEL"]
 SPACE_CARD = """---
-title: Practice Studio
+title: Voice Agent Studio
 emoji: 🎙️
 colorFrom: green
 colorTo: blue
@@ -31,10 +31,11 @@ sdk_version: 6.30.0
 python_version: "3.12"
 app_file: space.py
 pinned: false
-short_description: Voice practice for interviews, calls and small talk
+short_description: Real-time voice agents with a REST API
 ---
 
-Voice practice for job interviews, phone calls and small talk, built to be patient with stammering.
+Real-time voice agents (an interviewer, a phone agent and a persona agent) that run on a CPU, with a REST API.
+API reference: /docs on the running Space.
 {source}
 """
 

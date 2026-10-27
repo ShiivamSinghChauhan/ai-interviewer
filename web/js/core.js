@@ -1,8 +1,8 @@
-// Practice Studio in the browser: shared state, the socket, the setup -> mic check -> session flow, the room.
+// Voice Agent Studio in the browser: shared state, the socket, the setup -> voice check -> session flow, the room.
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const S = {
-  meta: null, mode: null, ws: null, headphones: true, handlers: {},
+  meta: null, mode: null, session: null, ws: null, headphones: true, handlers: {},
   micCtx: null, micAnalyser: null, muted: false,
   playCtx: null, outAnalyser: null, outInput: null, gen: 0, chain: Promise.resolve(), nextTime: 0,
   active: new Set(), pending: 0, aiCaption: "",
@@ -39,6 +39,8 @@ async function boot() {
   $("#nav-settings").onclick = () => !S.started && Tools.settings();
   $("#nav-history").onclick = () => !S.started && Tools.history();
   $("#btn-again").onclick = () => location.reload();
+  const joinId = new URLSearchParams(location.search).get("session");
+  if (joinId) return joinSession(joinId);
   const h = location.hash.slice(1);  // deep links: #interview #conversation #phone #repos #settings #history
   if (["interview", "conversation", "phone"].includes(h)) openMode(h);
   else if (h === "repos") Tools.repos();
@@ -51,19 +53,38 @@ async function boot() {
 // The hosted demo keeps nothing and can't be reconfigured from the browser; say so up front.
 function publicDemo() {
   const cap = S.meta.max_session_min ? ` Sessions are capped at ${S.meta.max_session_min} minutes.` : "";
-  const busy = S.meta.busy ? " <b>Someone is practising right now</b>, so you may have to wait a few minutes." : "";
-  $("#demo-note").innerHTML = `Public demo: one person at a time, nothing is saved, and it works best in Chrome or Edge
+  const busy = S.meta.busy ? " <b>A session is running right now</b>, so you may have to wait a few minutes." : "";
+  $("#demo-note").innerHTML = `Public demo: one session at a time, nothing is saved, and it works best in Chrome or Edge
     with headphones.${cap}${busy}`;
   $("#demo-note").classList.remove("hidden");
   $("#nav-history").classList.add("hidden");
 }
 
+const agent = (mode) => ({ interview: Interview, conversation: Conversation, phone: Phone })[mode];
+
 async function openMode(mode) {
   S.mode = mode;
   show(mode);
-  await ({ interview: Interview, conversation: Conversation, phone: Phone }[mode]).init();
+  await agent(mode).init();
   const cap = S.meta.max_session_min;
   if (cap) for (const input of $$("input[name=duration_min]")) { input.max = cap; input.value = Math.min(input.value, cap); }
+}
+
+// A link from the API (?session=<id>) opens that session straight away: the setup was done by whoever created it.
+async function joinSession(id) {
+  document.body.classList.add("joined");
+  const r = await fetch(`/api/v1/sessions/${encodeURIComponent(id)}/join`);
+  const info = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    show("home");
+    $("#demo-note").textContent = info.detail || "This session link doesn't work.";
+    $("#demo-note").classList.remove("hidden");
+    return;
+  }
+  S.mode = info.agent; S.session = id;
+  const mode = agent(info.agent);
+  await mode.init();
+  await mode.launch({ headphones: false, ...mode.opts.defaults, ...info.setup });
 }
 
 // voice + support controls shared by every setup form
@@ -116,7 +137,8 @@ function send(obj) { if (S.ws && S.ws.readyState === 1) S.ws.send(JSON.stringify
 function connect(mode, setupMsg) {
   return new Promise((resolve) => {
     const scheme = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${scheme}://${location.host}/ws/${mode}`);
+    const query = S.session ? `?session=${encodeURIComponent(S.session)}` : "";
+    const ws = new WebSocket(`${scheme}://${location.host}/ws/${mode}${query}`);
     ws.binaryType = "arraybuffer";
     S.ws = ws;
     ws.onopen = () => { send({ type: "setup", ...setupMsg }); resolve(); };
@@ -158,10 +180,10 @@ function onMessage(m) {
     case "assessment": $("#assessment").textContent = m.text; break;
     case "enrolled":
       $("#mic-transcript").textContent = m.text;
-      $("#mic-status").textContent = "Got your voice and your calm baseline. Read again to recalibrate, or start.";
+      $("#mic-status").textContent = "Got your voice. Read it again to redo it, or start.";
       $("#btn-begin").disabled = false;
       break;
-    case "enroll_failed": $("#mic-status").textContent = "Please read the whole paragraph - take all the time you need."; break;
+    case "enroll_failed": $("#mic-status").textContent = "Please read the whole paragraph, at your own pace."; break;
     case "prep": prepStep(m); break;
     case "prep_done": prepDone(m); break;
     case "started": onStarted(m); break;
@@ -249,7 +271,7 @@ $("#btn-done").onclick = endMyTurn;
 $("#btn-mute").onclick = toggleMute;
 $("#btn-captions").onclick = () => { $("#captions").classList.toggle("off"); $("#btn-captions").classList.toggle("on"); };
 $("#btn-coach").onclick = () => { $("#coach").classList.toggle("hidden"); $("#btn-coach").classList.toggle("on"); };
-$("#btn-end").onclick = () => { if (confirm("End the session and get your feedback?")) send({ type: "end" }); };
+$("#btn-end").onclick = () => { if (confirm("End the session?")) send({ type: "end" }); };
 const livePatience = () => send({ type: "patience", value: $("#live-patience").value, manual: $("#live-manual").checked });
 $("#live-patience").onchange = livePatience;
 $("#live-manual").onchange = livePatience;

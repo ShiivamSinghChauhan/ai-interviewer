@@ -1,6 +1,6 @@
-"""The web server: one page, a WebSocket per live session, and a handful of JSON endpoints.
+"""The web server: one page, a WebSocket per live session, the REST API (app/api.py) and a few JSON endpoints.
 
-    python -m app.main   ->  http://127.0.0.1:8000
+    python -m app.main   ->  http://127.0.0.1:8000  (API docs at /docs)
 """
 import asyncio
 import logging
@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from app import api
 from app.audio.models import SmartTurn, SpeakerGate, StreamingSTT
 from app.audio.tts import TTS
 from app.config import CONFIG_DIR, MODELS_DIR, ROOT, load, settings
@@ -74,7 +75,10 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Practice Studio", lifespan=lifespan)
+app = FastAPI(title="Voice Agent Studio", version="1.0.0", lifespan=lifespan,
+              description="Real-time voice agents (interviewer, phone agent, persona agent) that run on a CPU. "
+                          "Create a session, send the person its join_url, and collect the result.")
+app.include_router(api.router)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 
@@ -223,16 +227,21 @@ async def config_put(name: str, body: str = Body(..., media_type="text/plain")):
 
 
 @app.websocket("/ws/{mode}")
-async def live(ws: WebSocket, mode: str):
+async def live(ws: WebSocket, mode: str, session: str | None = None):
+    """`session` is the id of a session created through the API; without it the page's setup screen decides."""
     await ws.accept()
     if mode not in SESSIONS:
+        return await ws.close()
+    job = api.book.get(session) if session else None
+    if session and (not job or job.agent != mode or job.current_status() != "created"):
+        await ws.send_json({"type": "error", "text": "This link is invalid, expired or already used."})
         return await ws.close()
     if live_slot.locked():
         await ws.send_json({"type": "error", "text": "Another session is running right now (another tab, or "
                                                      "another visitor). Try again in a few minutes."})
         return await ws.close()
     async with live_slot:
-        await SESSIONS[mode](ws, models).run()
+        await SESSIONS[mode](ws, models, job).run()
 
 
 def main() -> None:

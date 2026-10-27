@@ -1,4 +1,4 @@
-"""Finished sessions on disk: data/sessions/<mode>/<started>/ holds session.json, report.md and the user's
+"""Finished sessions on disk: data/sessions/<mode>/<started>/ holds session.json, report.md and the person's
 audio (audio/U1.wav, U2.wav...). A public deployment keeps nothing."""
 import json
 from datetime import datetime
@@ -39,13 +39,12 @@ class SessionStore:
                 record = json.loads(file.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 continue
-            speech = record.get("speech_analysis") or {}
+            delivery = record.get("delivery") or {}
             rows.append({
                 "mode": record.get("mode"), "id": file.parent.name, "minutes": record.get("minutes"),
                 "title": _title(record), "turns": len(record.get("turns", [])),
                 "has_report": bool(record.get("report_markdown")),
-                "stammer": (speech.get("stammer") or {}).get("pct_syllables_stuttered"),
-                "nervous": (speech.get("nervousness") or {}).get("score"),
+                "wpm": delivery.get("words_per_minute"), "response_s": delivery.get("response_time_s"),
             })
         return rows
 
@@ -54,9 +53,8 @@ class SessionStore:
         if not self.enabled or not file.resolve().is_relative_to(self.root.resolve()) or not file.exists():
             return None
         record = json.loads(file.read_text(encoding="utf-8"))
-        return {"markdown": record.get("report_markdown", ""), "speech_markdown": record.get("speech_markdown", ""),
-                "speech": record.get("speech_analysis") or {}, "folder": str(file.parent),
-                "mode": record.get("mode")}
+        return {"markdown": record.get("report_markdown", ""), "delivery": record.get("delivery") or {},
+                "folder": str(file.parent), "mode": record.get("mode")}
 
 
 def _title(record: dict) -> str:

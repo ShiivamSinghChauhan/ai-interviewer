@@ -1,5 +1,5 @@
-# Phone-call practice. A random (or chosen) person calls you with a purpose and you handle the call,
-# or you call someone to get a task done. Add your own scenarios at the bottom - nothing is hardcoded.
+# Phone agents. Outbound: the agent calls the person ("incoming" below, from the person's side). Inbound: the
+# person calls the agent's line ("outgoing"). Add your own scenarios below - nothing is hardcoded.
 
 llm:
   chain: []            # empty = LLM_CHAIN from .env
@@ -13,7 +13,7 @@ defaults:
   difficulty: medium
   region: India        # where the call happens (names, places, phone formats)
   language: "English (an occasional local word like 'ji' or 'haan' is fine, but every sentence is English)"
-  user_name: ""        # your name, if the caller should know it
+  user_name: ""        # the person's name, if the agent should know it
   patience: patient
   manual_turns: false
   tts_engine: edge
@@ -25,7 +25,7 @@ defaults:
 
 difficulties:
   easy:
-    label: Easy - polite and patient caller
+    label: Patient and slow-paced
     caller: polite and patient, speaks clearly and a little slowly, happy to repeat things
     speed: 0.92
     line: clear
@@ -34,7 +34,7 @@ difficulties:
     tags: ""
     cue_hint: "You are patient and friendly on the phone: [warm] or [soft tone] now and then."
   medium:
-    label: Medium - an ordinary busy person
+    label: Natural and efficient
     caller: an ordinary busy person; friendly enough but wants to get to the point
     speed: 1.0
     line: mobile
@@ -43,7 +43,7 @@ difficulties:
     tags: ""
     cue_hint: "You are a normal busy person: an occasional [sigh], [hmm] or [in a hurry tone] when it fits."
   hard:
-    label: Hard - rushed, impatient, bad line
+    label: Brisk, on a noisy line
     caller: in a hurry and slightly impatient, talks fast, sometimes cuts in with follow-up questions, does not like long pauses
     speed: 1.12
     line: noisy
@@ -59,143 +59,115 @@ lines:
   noisy: {label: Noisy / weak signal, bandpass: true, noise: 0.01, dropouts: true}
 
 categories:
-  daily: Daily life
-  work: Work & career
-  service: Customer service
-  safety: Scams & safety
-  social: Social
+  recruiting: Recruiting
+  support: Customer support
+  healthcare: Healthcare
+  logistics: Deliveries
+  finance: Banking & payments
+  sales: Sales
+  hospitality: Hospitality
 
-# Each scenario is a seed; the generator invents the concrete details (names, numbers, twists) every time.
+# Each scenario is a seed; the generator invents the concrete details (names, numbers, a complication) every time.
+# `caller` is the agent's role; `user_task` tells the person what to do on an inbound call.
 scenarios:
-  - id: delivery_lost
-    category: daily
+  # ---- outbound: the agent calls the person ----
+  - id: delivery_address
+    category: logistics
     direction: incoming
-    title: Delivery person can't find your address
+    title: Courier confirms a delivery address
     caller: a delivery executive from a food or parcel app
-    purpose: find the user's exact location and hand over the order
+    purpose: find the customer's exact location and hand over the order
     needs_from_user: [landmarks, building or flat number, which gate to use]
-    twists: ["their phone battery is about to die", "they are at the wrong tower", "it is raining and they are annoyed"]
-  - id: recruiter_cold_call
-    category: work
+    twists: ["their phone battery is about to die", "they are at the wrong tower", "it is raining heavily"]
+  - id: recruiter_screen
+    category: recruiting
     direction: incoming
-    title: Recruiter calls about a job
-    caller: a recruiter from a staffing agency or a company's talent team
-    purpose: screen the user for an AI/ML engineering role
-    needs_from_user: [current role, years of experience, notice period, current and expected salary, availability for an interview]
-    twists: ["the role needs relocation", "they mispronounce the user's name", "they want an interview slot tomorrow"]
-  - id: hr_reschedule
-    category: work
+    title: Recruiter's first screening call
+    caller: a recruiter from a company's talent team
+    purpose: screen the candidate for an open role and book the next round
+    needs_from_user: [current role, years of experience, notice period, expected salary, availability for an interview]
+    twists: ["the role needs relocation", "they want an interview slot tomorrow"]
+  - id: interview_reschedule
+    category: recruiting
     direction: incoming
-    title: HR needs to reschedule your interview
+    title: HR reschedules an interview
     caller: an HR coordinator
-    purpose: move the user's scheduled interview to another slot
+    purpose: move the candidate's scheduled interview to another slot
     needs_from_user: [two alternative time slots, confirmation of email id]
-    twists: ["only very early or late slots are left", "the interviewer changed and the round is now technical"]
+    twists: ["only very early or late slots are left", "the round is now technical"]
   - id: bank_verification
-    category: service
+    category: finance
     direction: incoming
     title: Bank verifies a suspicious transaction
-    caller: a genuine bank fraud-prevention officer
-    purpose: confirm whether a recent card transaction was made by the user
+    caller: a bank fraud-prevention officer
+    purpose: confirm whether a recent card transaction was made by the customer
     needs_from_user: [whether they made the transaction, last four digits of the card]
-    rules: The genuine bank never asks for OTP, PIN, CVV or full card number. You do not ask for them either.
+    rules: A bank never asks for an OTP, PIN, CVV or full card number. Never ask for them; warn the customer if they offer.
     twists: ["the transaction is from another city", "the card will be blocked if not confirmed"]
-  - id: scam_kyc
-    category: safety
+  - id: payment_reminder
+    category: finance
     direction: incoming
-    title: "'KYC update' call (scam)"
-    caller: a scammer pretending to be from the user's bank or telecom company
-    purpose: pressure the user into sharing an OTP or installing a remote-access app
-    needs_from_user: [OTP, card details, to install an app]
-    rules: You are a scammer for training purposes. Use urgency and authority; if the user refuses firmly, try one more pressure tactic and then hang up. Never reveal you are a scammer.
-    twists: ["claims the account will be frozen in 30 minutes", "knows the user's name and bank"]
-  - id: wrong_number
-    category: social
-    direction: incoming
-    title: Wrong number
-    caller: someone looking for a different person
-    purpose: reach someone they think has this number
-    needs_from_user: [to confirm who they are]
-    twists: ["they insist the number is right", "they are calling about an urgent family matter for someone else"]
-  - id: old_friend
-    category: social
-    direction: incoming
-    title: Old school friend calls after years
-    caller: an old school friend the user has not spoken to in years
-    purpose: catch up and invite the user to a reunion
-    needs_from_user: [what they are doing now, whether they can come to the reunion]
-    twists: ["they want a favour at the end", "they mix the user up with someone else for a moment"]
-  - id: manager_urgent
-    category: work
-    direction: incoming
-    title: Manager calls about an urgent production issue
-    caller: the user's team lead or manager
-    purpose: get quick information about a failing ML model or service in production
-    needs_from_user: [what changed recently, how long a fix will take, who else can help]
-    twists: ["a client call is in 15 minutes", "it is a Sunday evening"]
+    title: Reminder about an overdue bill
+    caller: a polite billing assistant from a utility or telecom company
+    purpose: remind the customer about an overdue bill and agree on a payment date
+    needs_from_user: [confirmation of the account holder's name, a payment date, preferred payment method]
+    rules: Never threaten or shame. Offer to send a payment link by SMS. Accept a reasonable date.
+    twists: ["the customer says they already paid", "they ask for an instalment plan"]
   - id: clinic_confirm
-    category: daily
+    category: healthcare
     direction: incoming
     title: Clinic confirms an appointment
     caller: a receptionist at a doctor's clinic
     purpose: confirm or move tomorrow's appointment and collect details
     needs_from_user: [full name, date of birth, whether the time works]
     twists: ["the doctor is running late", "they need insurance details"]
-  - id: telemarketer
-    category: service
+  - id: sales_followup
+    category: sales
     direction: incoming
-    title: Telemarketer selling a credit card or insurance
-    caller: a persistent telemarketer
-    purpose: sell a credit card, loan or insurance policy
-    needs_from_user: [interest, income, a time for an agent visit]
-    rules: Keep pitching politely but persistently; stop only after a clear, firm "no".
-    twists: ["offers a 'limited time' free gift", "asks to transfer to a senior"]
-  - id: found_wallet
-    category: daily
+    title: Follow-up on an insurance enquiry
+    caller: an insurance advisor following up on a form the customer filled in online
+    purpose: understand what cover they need and book a detailed consultation
+    needs_from_user: [what they want to insure, budget, a time for the consultation]
+    rules: Be helpful, not pushy. Stop pitching after a clear "no" and thank them.
+    twists: ["they only wanted a price", "they ask for the quote on WhatsApp"]
+  - id: service_feedback
+    category: support
     direction: incoming
-    title: A stranger found your wallet
-    caller: a stranger who found the user's wallet with their visiting card in it
-    purpose: arrange returning the wallet
-    needs_from_user: [proof it is theirs (what's inside), where and when to meet]
-    twists: ["they are leaving the city tonight", "they ask for a small reward"]
-  - id: client_complaint
-    category: work
-    direction: incoming
-    title: Upset client complains about a delay
-    caller: a client whose project deliverable from the user's team is late
-    purpose: understand why it is late and get a firm new date
-    needs_from_user: [reason for the delay, new delivery date, what will be done to prevent it]
-    twists: ["they threaten to escalate", "they need it for a board meeting"]
-  # ---- you make the call ----
+    title: Feedback call after a service visit
+    caller: a customer-experience executive from an appliance service company
+    purpose: collect feedback on yesterday's repair visit
+    needs_from_user: [a rating from 1 to 5, whether the problem is fixed, anything to improve]
+    twists: ["the technician arrived late", "the problem is back"]
+  # ---- inbound: the person calls the agent's line ----
   - id: cancel_broadband
-    category: service
+    category: support
     direction: outgoing
-    title: Call to cancel your broadband plan
-    caller: a customer-retention agent at a broadband company (answers the user's call)
-    purpose: keep the customer from cancelling with offers
+    title: Broadband line - cancel a plan
+    caller: a customer-retention agent at a broadband company (answers the call)
+    purpose: handle a cancellation and offer to keep the customer once
     user_task: Cancel your broadband connection and get a cancellation reference number. Don't accept the offers.
     needs_from_user: [account number or registered phone, reason for cancelling]
   - id: refund_damaged
-    category: service
+    category: support
     direction: outgoing
-    title: Call customer care for a refund
-    caller: a customer-care agent at an online shopping company (answers the user's call)
+    title: Online store - damaged product
+    caller: a customer-care agent at an online shopping company (answers the call)
     purpose: handle a complaint about a damaged product
     user_task: You received a damaged mixer grinder. Get a full refund (not a replacement) and a timeline.
     needs_from_user: [order id, what is damaged, refund or replacement]
   - id: book_doctor
-    category: daily
+    category: healthcare
     direction: outgoing
-    title: Book a doctor's appointment
-    caller: a receptionist at a busy clinic (answers the user's call)
+    title: Clinic reception - book an appointment
+    caller: a receptionist at a busy clinic (answers the call)
     purpose: book an appointment
     user_task: Book an appointment with a general physician for this week, after 6 pm if possible.
     needs_from_user: [name, age, symptoms in brief, preferred time]
   - id: restaurant_booking
-    category: social
+    category: hospitality
     direction: outgoing
-    title: Reserve a table for a group
-    caller: a restaurant host (answers the user's call)
+    title: Restaurant - reserve a table
+    caller: a restaurant host (answers the call)
     purpose: take a reservation
     user_task: Book a table for 6 people this Saturday at 8 pm, ask if they have a vegetarian menu and parking.
     needs_from_user: [name, number of people, time, phone number]
@@ -203,9 +175,10 @@ scenarios:
 generator:
   chain: []           # empty = REPORT_LLM_CHAIN
   temperature: 1.1
+  max_tokens: 3000    # reasoning models think inside this budget; too little cuts the JSON off
   prompt: |
-    Invent the concrete details for a realistic phone-call practice scenario. Make it feel like a real, specific
-    call in {region} - fresh names, places and numbers every time, never generic.
+    Invent the concrete details for a realistic phone call between a business's voice agent and a person. Make it
+    feel like a real, specific call in {region} - fresh names, places and numbers every time, never generic.
     Scenario seed: {seed}
     Direction: {direction} ({direction_hint})
     Difficulty: {difficulty}
@@ -222,7 +195,7 @@ generator:
       "opening_line": "first thing they say when the call connects",
       "end_when": "what has to happen before the caller wraps up",
       "user_task": "for outgoing calls: the user's goal and any info they have (order id etc.); else empty",
-      "success_criteria": ["how to judge whether the user handled it well"]}}
+      "success_criteria": ["what has to be true for the call to count as resolved"]}}
 
 prompt: |
   You are {caller_name}, {age}, {role}. This is a LIVE PHONE CALL with the user{org}.
@@ -240,10 +213,11 @@ prompt: |
   - Speak the way people talk on the phone: short turns (1-3 sentences), no lists, no markdown, no emojis.
   - Ask one thing at a time. If something is unclear or the line seems bad, ask them to repeat or spell it.
   - Confirm important details back ("So that's flat 304, B wing, right?").
-  - The user stammers and is practising phone calls. Never finish their sentences, never comment on their speech.
-    Pauses are not rudeness. React like a real person of your type would, but don't be cruel.
+  - People pause, restart sentences and repeat words on the phone. Never finish their sentences or comment on how
+    they speak; a pause is not rudeness.
   - Their words come from speech recognition and may contain errors; interpret what they most likely meant.
-  - Stay in character as a real person; never say you are an AI.
+  - Stay in your role. If they ask whether you are a person, say honestly that you are an AI voice assistant, then
+    carry on.
   - When {end_when}, or if the user clearly wants to end the call, close the call naturally (thank them, say bye).
   After your spoken reply, on a new line, write exactly:
   ##META {{"end": <true only if this reply ends the call>}}
@@ -270,25 +244,19 @@ memory:
 report:
   chain: []
   prompt: |
-    You are a communication coach helping someone who stammers and gets anxious on phone calls. Review this
-    practice call and write a debrief in Markdown.
+    You review phone calls handled by a business's voice agent. Write the call summary in Markdown.
 
-    Scenario (hidden from the user during the call): {scenario}
-    Direction: {direction}
-    Call transcript (user lines come from speech recognition; ignore recognition errors; repeated words are a
-    stammer, not a mistake):
+    Scenario (what the agent knew): {scenario}
+    Direction: {direction} ("incoming" = the agent called the person, "outgoing" = the person called the agent)
+    Transcript (the person's lines come from speech recognition; ignore recognition errors):
     {transcript}
 
     Sections:
-    1. **What the call was about** (one line) and **Outcome**: did the user achieve what mattered
-       ({success})? Answer Achieved / Partly / Not achieved, with one sentence why.
-    2. **Phone skills checklist**: a table with ✓ / ~ / ✗ and a one-line note for: greeting & finding out who
-       is calling; giving information clearly; asking them to repeat or spell when needed; confirming key
-       details; staying in control of the call; polite close.
-    3. **Safety** (only if relevant: scams, sharing OTP/PIN/card numbers): did they protect themselves?
-    4. **Better phrases**: 4-6 short, natural phone phrases they could have used at specific moments in this
-       call (quote the moment).
-    5. **Try it like this**: a short sample of how a calm, confident person would handle the trickiest moment
-       (4-6 lines of dialogue).
-    6. **Next call to practise**: one suggestion.
-    Under 500 words. Warm and practical.
+    1. **Summary**: what the call was about, in one or two sentences.
+    2. **Outcome**: Resolved / Partly resolved / Not resolved, judged against: {success}. One sentence why.
+    3. **Details captured**: a table of each thing the agent needed and what the person said ("not given" if
+       missing).
+    4. **Follow-ups**: concrete next steps for the business, if any.
+    5. **Agent quality**: did the agent confirm key details, stay polite and on purpose, and handle the
+       complication? One thing to improve.
+    Under 350 words. Factual; quote the person where it matters.

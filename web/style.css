@@ -85,6 +85,9 @@ button.danger { background: var(--danger); border-color: var(--danger); color: w
 button.done { background: var(--accent-2); border-color: var(--accent-2); color: #0b1a12; font-weight: 700; }
 button:disabled { opacity: .45; cursor: not-allowed; }
 .small-btn { padding: 5px 12px; font-size: 13px; }
+.link-btn { display: inline-block; border-radius: 10px; border: 1px solid var(--line); color: var(--text); text-decoration: none; }
+/* someone who opened a session link sees the session, not the studio around it */
+body.joined .topbar .row, body.joined #screen-home .mode-cards, body.joined #btn-again { display: none; }
 
 /* mic check + interview prep */
 blockquote { margin: 14px 0; padding: 14px 16px; background: var(--panel-2); border-left: 3px solid var(--accent); border-radius: 8px; font-size: 17px; line-height: 1.5; }
@@ -153,7 +156,7 @@ dd { margin: 0; font-variant-numeric: tabular-nums; }
 .phone-buttons .wide { width: auto; height: 44px; border-radius: 22px; padding: 0 20px; }
 
 /* report */
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 16px 0; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
 .stat { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; }
 .stat b { display: block; font-size: 20px; }
 .stat span { font-size: 12px; color: var(--muted); }
@@ -181,6 +184,7 @@ dd { margin: 0; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 760px) {
   .grid3, .traits, .mode-cards, .charts, .voice-block, .repo-row { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
   .span2, .span3 { grid-column: span 1; }
   #screen-room { flex-direction: column; height: auto; }
   .stage { grid-template-columns: 1fr; }

@@ -1,7 +1,8 @@
-"""A fake user with a fake stammer talks to the running server, so you don't have to.
+"""A synthetic person talks to the running server, pauses and restarts included, so you don't have to.
 
-    python -m app.main                                   # terminal 1
-    python -m scripts.smoke_test --mode phone --report   # terminal 2
+    python -m app.main                                         # terminal 1
+    python -m scripts.smoke_test --mode phone --report         # terminal 2
+    python -m scripts.smoke_test --mode interview --api        # the same, through a session made with the API
 
 The voice comes from edge-tts and is streamed in real time as 16 kHz PCM. The script prints what the
 server heard, why it decided the turn was over, and how long the reply took.
@@ -16,13 +17,14 @@ import sys
 import time
 
 import edge_tts
+import httpx
 import numpy as np
 import websockets
 
 VOICE = "en-IN-NeerjaNeural"
 MIC_CHECK = ("Hello, my name is Sahil. I like talking about my work, my hobbies, and the places I have visited. "
-             "Today I want to practise speaking English with a new person.")
-# repetitions, and "||" is a 1.8 s silent block in the middle of an answer
+             "I'm ready to start whenever you are.")
+# restarts, and "||" is a 1.8 s silence in the middle of an answer
 ANSWERS = {
     "conversation": [
         "I I think the most important thing in life is... || to have people who understand you.",
@@ -43,17 +45,17 @@ ANSWERS = {
     ],
 }
 SETUPS = {
-    "conversation": {"persona": {"name": "Kabir", "age": 24, "gender": "male", "accent": "Indian",
-                                 "occupation": "philosophy student", "mode": "deep", "scene": "cafe",
-                                 "patience": "very_patient", "duration_min": 10,
-                                 "traits": {"warmth": 5, "humor": 4, "energy": 4, "curiosity": 4}}},
+    "conversation": {"setup": {"name": "Kabir", "age": 24, "gender": "male", "accent": "Indian",
+                               "occupation": "philosophy student", "mode": "deep", "scene": "cafe",
+                               "patience": "very_patient", "duration_min": 10,
+                               "traits": {"warmth": 5, "humor": 4, "energy": 4, "curiosity": 4}}},
     "interview": {"setup": {"candidate_name": "Sahil", "duration_min": 10, "style": "neutral",
                             "resume": "ML engineer, 2 years. RAG chatbot over insurance PDFs (LangChain, Qdrant). "
                                       "QLoRA fine-tune of Llama 3 8B.",
                             "jd": "AI Engineer at a fintech: RAG over financial documents, LoRA fine-tuning, "
                                   "vLLM serving, evaluation."},
                   "repos": [], "overrides": {"prep": {"steps": {"critique": {"enabled": False}}}}},
-    "phone": {"setup": {"scenario": "delivery_lost", "difficulty": "medium", "duration_min": 5}},
+    "phone": {"setup": {"scenario": "delivery_address", "difficulty": "medium", "duration_min": 5}},
 }
 
 
@@ -160,6 +162,7 @@ async def main():
     ap.add_argument("--tts", default="edge", choices=["edge", "fish", "elevenlabs", "kokoro"])
     ap.add_argument("--patience", default="very_patient", choices=["very_patient", "patient", "normal"])
     ap.add_argument("--report", action="store_true", help="end the interview and print the report")
+    ap.add_argument("--api", action="store_true", help="create the session with POST /api/v1/sessions first")
     ap.add_argument("--style", help="interview style (friendly/neutral/tough) or phone difficulty (easy/medium/hard)")
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # reports contain non-ASCII punctuation
@@ -168,14 +171,21 @@ async def main():
     mic = await tts_pcm(MIC_CHECK)
     answers = [await tts_pcm(a) for a in ANSWERS[args.mode][:args.answers]]
 
-    async with websockets.connect(args.url + args.mode, max_size=None) as ws:
+    setup = json.loads(json.dumps(SETUPS[args.mode]))
+    setup["setup"].update({"tts_engine": args.tts, "patience": args.patience})
+    if args.style:
+        setup["setup"]["difficulty" if args.mode == "phone" else "style"] = args.style
+    url, session = args.url + args.mode, None
+    if args.api:  # the way an integration would do it: create the session, then join it
+        api = re.sub(r"^ws", "http", args.url).removesuffix("/ws/") + "/api/v1/sessions"
+        session = httpx.post(api, json={"agent": args.mode, **setup}, timeout=30).raise_for_status().json()
+        print(f"[api] created {session['id']}: {session['join_url']}")
+        url += f"?session={session['id']}"
+        args.report = True
+
+    async with websockets.connect(url, max_size=None) as ws:
         c = Candidate(ws)
         reader = asyncio.create_task(c.reader())
-        setup = json.loads(json.dumps(SETUPS[args.mode]))
-        inner = setup.get("persona") or setup.get("setup")
-        inner.update({"tts_engine": args.tts, "patience": args.patience})
-        if args.style:
-            inner["difficulty" if args.mode == "phone" else "style"] = args.style
         await ws.send(json.dumps({"type": "setup", **setup}))
         ready = await c.wait_for("ready", 120)
         if args.mode == "phone":
@@ -183,7 +193,7 @@ async def main():
         if args.no_enroll:
             await ws.send(json.dumps({"type": "skip_enroll"}))
         else:
-            asyncio.create_task(c.speak(mic, tail=1.5))
+            asyncio.create_task(c.speak(mic, tail=2.5))  # the mic check ends after 1.5 s of silence
             m = await c.wait_for("enrolled", 60)
             print(f"[mic check] heard: {m['text']}")
         await ws.send(json.dumps({"type": "begin"}))
@@ -213,11 +223,14 @@ async def main():
         if args.report:
             await ws.send(json.dumps({"type": "end"}))
             r = await c.wait_for("report", 300)
+            if session:
+                done = httpx.get(f"{api}/{session['id']}", timeout=30).json()
+                r = {**(done.get("result") or {}), "markdown": (done.get("result") or {}).get("report_markdown", "")}
+                print(f"\n[api] status {done['status']}, result keys: {sorted(done.get('result') or {})}")
             print("\n" + r["markdown"][:2500])
-            sp = {k: v for k, v in (r.get("speech") or {}).items() if k != "per_turn"}
-            print("\n--- speech analysis ---\n" + json.dumps(sp, indent=1)[:2500])
-            print("\n" + (r.get("speech_markdown") or "")[:2000])
-            print("saved:", r["folder"])
+            delivery = {k: v for k, v in (r.get("delivery") or {}).items() if k != "per_turn"}
+            print("\n--- delivery ---\n" + json.dumps(delivery, indent=1))
+            print("saved:", r.get("folder") or "-")
         reader.cancel()
 
 

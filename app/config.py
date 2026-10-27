@@ -89,6 +89,12 @@ class Settings:
     public_demo: bool = _env("PUBLIC_DEMO", False)
     max_session_min: float = _env("MAX_SESSION_MIN", 0.0)  # 0 = whatever the setup screen asks for
 
+    # The REST API (app/api.py). With no tokens it is open, which is fine on a laptop and wrong on a server.
+    api_tokens: list[str] = field(default_factory=lambda: _env_list("API_TOKENS"))
+    webhook_secret: str = _env("WEBHOOK_SECRET")
+    public_url: str = _env("PUBLIC_URL")  # for join links; by default the address the request came in on
+    api_sessions_dir: Path = DATA_DIR / "api_sessions"
+
 
 settings = Settings()
 

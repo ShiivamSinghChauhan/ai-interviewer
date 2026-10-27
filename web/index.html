@@ -3,40 +3,46 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Practice Studio</title>
-  <meta name="description" content="Voice practice for job interviews, phone calls and small talk, built to be patient with stammering.">
+  <title>Voice Agent Studio</title>
+  <meta name="description" content="Real-time voice agents - an interviewer, a phone agent and a persona agent - with a REST API.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='6' fill='%233ecf8e'/></svg>">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="#" id="home-link"><span class="dot"></span> Practice Studio</a>
+  <a class="brand" href="#" id="home-link"><span class="dot"></span> Voice Agent Studio</a>
   <div class="row">
     <div id="pills" class="pills"></div>
     <button class="ghost small-btn" id="nav-history">History</button>
     <button class="ghost small-btn" id="nav-repos">Repo reports</button>
     <button class="ghost small-btn" id="nav-settings">Settings</button>
+    <a class="ghost small-btn link-btn" id="nav-api" href="/docs" target="_blank" rel="noopener">API</a>
   </div>
 </header>
 
 <!-- ============ home ============ -->
 <main id="screen-home" class="screen">
   <section class="home">
-    <h1>What do you want to practise?</h1>
-    <p class="muted">Everything is voice. Pauses, blocks and repeats are fine - every mode is built to be patient.</p>
+    <h1>Real-time voice agents</h1>
+    <p class="muted">Each agent listens, waits until you have really finished (pauses are fine) and answers in about a
+      second. Pick one and play the person on the other end. Businesses create sessions through the
+      <a href="/docs" target="_blank" rel="noopener">REST API</a> and get transcripts, scores and a report back.</p>
     <p id="demo-note" class="demo-note hidden"></p>
     <div class="mode-cards">
       <button class="mode-card" data-mode="interview">
-        <span class="icon">🎯</span><b>AI Interview</b>
-        <span>Studies the JD, your resume and your project repos, then interviews you like a real engineer.</span>
+        <span class="icon">🎯</span><b>Interviewer agent</b>
+        <span>Reads the JD, the resume and the candidate's repositories, runs a screening interview, scores every
+          answer and writes a hiring report.</span>
       </button>
       <button class="mode-card" data-mode="conversation">
-        <span class="icon">💬</span><b>Conversation</b>
-        <span>Talk with a stranger whose personality, accent and topic you design.</span>
+        <span class="icon">💬</span><b>Persona agent</b>
+        <span>Any role you describe: a support agent, a sales rep, a tutor or a character, with its own voice,
+          accent and personality.</span>
       </button>
       <button class="mode-card" data-mode="phone">
-        <span class="icon">📞</span><b>Phone call</b>
-        <span>Someone calls you with their own purpose - or you call to get something done.</span>
+        <span class="icon">📞</span><b>Phone agent</b>
+        <span>Calls the person (deliveries, reminders, verification) or answers a business line (clinic, support,
+          reservations), on phone-line audio.</span>
       </button>
     </div>
   </section>
@@ -45,11 +51,11 @@
 <!-- ============ interview setup ============ -->
 <main id="screen-interview" class="screen hidden">
   <section class="card wide">
-    <h1>AI Interview</h1>
+    <h1>Interviewer agent</h1>
     <form id="iv-form">
       <h3>The role</h3>
       <div class="grid3">
-        <label>Your name<input name="candidate_name" required></label>
+        <label>Candidate name<input name="candidate_name" required></label>
         <label>Role<input name="role"></label>
         <label>Level<select name="level" id="iv-level"></select></label>
         <label class="span2">Company style<select name="company" id="iv-company"></select></label>
@@ -59,11 +65,11 @@
       </div>
       <fieldset><legend>Focus areas</legend><div id="iv-focus" class="chips"></div></fieldset>
       <label>Job description (most important: the questions are built around it)<textarea name="jd" rows="6" placeholder="Paste the full JD"></textarea></label>
-      <label>Resume (text)<textarea name="resume" id="iv-resume" rows="6" placeholder="Paste your resume"></textarea></label>
+      <label>Resume (text)<textarea name="resume" id="iv-resume" rows="6" placeholder="Paste the candidate's resume"></textarea></label>
 
       <h3>Projects &amp; repositories</h3>
-      <p class="muted small">Attach the repo (GitHub URL or a local folder) behind any project. The interviewer reads the code before the interview. Reports are saved and reused next time, per commit.</p>
-      <div class="row"><button type="button" id="iv-find-projects">Find projects in my resume</button>
+      <p class="muted small">Attach the repository (GitHub URL or a local folder) behind any project. The agent reads the code before the interview. Reports are saved and reused, per commit.</p>
+      <div class="row"><button type="button" id="iv-find-projects">Find projects in the resume</button>
         <button type="button" id="iv-add-repo" class="ghost">+ Add a repository</button></div>
       <div id="iv-repos" class="repo-rows"></div>
 
@@ -72,9 +78,9 @@
         <label class="check"><input type="checkbox" id="iv-prep" checked> Prepare before the interview (deep planning)</label>
         <label class="check"><input type="checkbox" id="iv-step-repos" checked> Analyse attached repositories</label>
         <label class="check"><input type="checkbox" id="iv-step-critique" checked> Bar-raiser review of the plan</label>
-        <label class="check"><input type="checkbox" id="iv-history" checked> Never repeat earlier questions</label>
+        <label class="check"><input type="checkbox" id="iv-history" checked> Never repeat questions this candidate had before</label>
         <label class="check"><input type="checkbox" id="iv-reuse" checked> Reuse saved repo reports</label>
-        <label class="check"><input type="checkbox" id="iv-show-plan"> Show me the plan first (less realistic)</label>
+        <label class="check"><input type="checkbox" id="iv-show-plan"> Show the plan before starting</label>
       </div>
       <div class="grid3">
         <label>Question creativity <span class="val" id="iv-temp-val"></span><input type="range" id="iv-temp" min="0.3" max="1.3" step="0.1"></label>
@@ -90,16 +96,16 @@
 <main id="screen-conversation" class="screen hidden">
   <section class="card wide">
     <div class="row-between">
-      <div><h1>Who do you want to talk to?</h1>
-        <p class="muted">Build a person, pick a preset, or let chance decide. They talk like a real stranger, never like a tutor.</p></div>
+      <div><h1>Persona agent</h1>
+        <p class="muted">Describe who the agent is and what the conversation is for, start from a preset, or let chance decide.</p></div>
       <div class="row">
         <select id="cv-preset"><option value="">Presets…</option></select>
-        <select id="cv-saved"><option value="">My people…</option></select>
+        <select id="cv-saved"><option value="">Saved agents…</option></select>
         <button id="cv-surprise" type="button">🎲 Surprise me</button>
       </div>
     </div>
     <form id="cv-form">
-      <h3>Who they are</h3>
+      <h3>Who the agent is</h3>
       <div class="grid3">
         <label>Name<input name="name"></label>
         <label>Age <span class="val" id="cv-age-val"></span><input name="age" type="range" min="18" max="80"></label>
@@ -108,7 +114,7 @@
         <label>Hometown<input name="hometown" placeholder="e.g. Pune, India"></label>
         <label>Occupation<input name="occupation"></label>
       </div>
-      <label>Backstory (optional)<textarea name="backstory" rows="2" placeholder="Leave empty and they'll invent a consistent life."></textarea></label>
+      <label>Backstory (optional)<textarea name="backstory" rows="2" placeholder="Leave empty and the agent invents a consistent one."></textarea></label>
       <fieldset><legend>Interests</legend><div id="cv-interests" class="chips"></div>
         <input id="cv-interest-add" class="chip-input" placeholder="+ add your own and press Enter"></fieldset>
       <h3>Personality</h3>
@@ -120,22 +126,22 @@
         <label>You are<select name="relationship" id="cv-relationship"></select></label>
         <label class="span3">Topic to start with (optional)<input name="topic"></label>
         <label class="span3" id="cv-scenario-wrap">Role-play scenario<input name="scenario"></label>
-        <label>Who starts<select name="who_starts"><option value="them">They do</option><option value="me">I do</option></select></label>
+        <label>Who starts<select name="who_starts"><option value="them">The agent</option><option value="me">The person</option></select></label>
         <label>Length (minutes)<input name="duration_min" type="number" min="3" max="90"></label>
-        <label>Your name (optional)<input name="user_name"></label>
+        <label>Person's name (optional)<input name="user_name"></label>
       </div>
-      <h3>How they speak</h3>
+      <h3>How the agent speaks</h3>
       <div class="grid3">
-        <label>Their English<select name="level" id="cv-level"></select></label>
+        <label>Language level<select name="level" id="cv-level"></select></label>
         <label>Reply length<select name="length" id="cv-length"></select></label>
-        <label>Corrections<select name="corrections" id="cv-corrections"></select></label>
+        <label>Language corrections<select name="corrections" id="cv-corrections"></select></label>
       </div>
       <div class="checks">
-        <label class="check"><input type="checkbox" name="keep_me_talking" checked> Ask open questions to keep me talking</label>
-        <label class="check"><input type="checkbox" name="stay_in_character" checked> Stay in character as a real person</label>
+        <label class="check"><input type="checkbox" name="keep_me_talking" checked> Ask open questions to keep the person talking</label>
+        <label class="check"><input type="checkbox" name="stay_in_character" checked> Stay in character (off: says it is an AI when asked)</label>
       </div>
       <div id="cv-voiceblock" class="voice-block"></div>
-      <div class="actions"><button type="button" id="cv-save" class="ghost">Save this person</button>
+      <div class="actions"><button type="button" id="cv-save" class="ghost">Save this agent</button>
         <button class="primary" type="submit">Continue</button></div>
     </form>
   </section>
@@ -144,17 +150,16 @@
 <!-- ============ phone setup ============ -->
 <main id="screen-phone" class="screen hidden">
   <section class="card wide">
-    <h1>Phone call practice</h1>
-    <p class="muted">A realistic caller with their own goal. You won't know who it is until you pick up.</p>
+    <h1>Phone agent</h1>
+    <p class="muted">The agent calls you with a purpose (outbound), or you call its line with a task (inbound). Every call is generated fresh from the scenario.</p>
     <form id="ph-form">
       <div class="grid3">
-        <label>Who calls<select name="direction"><option value="incoming">Someone calls me</option><option value="outgoing">I make the call</option><option value="any">Either</option></select></label>
-        <label>Kind of call<select name="category" id="ph-category"></select></label>
+        <label>Call type<select name="direction"><option value="incoming">Outbound: the agent calls me</option><option value="outgoing">Inbound: I call the agent</option><option value="any">Either</option></select></label>
+        <label>Industry<select name="category" id="ph-category"></select></label>
         <label>Scenario<select name="scenario" id="ph-scenario"></select></label>
-        <label>Difficulty<select name="difficulty" id="ph-difficulty"></select></label>
-        <label>Phone line<select name="line" id="ph-line"><option value="">Match difficulty</option></select></label>
+        <label>Agent manner<select name="difficulty" id="ph-difficulty"></select></label>
+        <label>Phone line<select name="line" id="ph-line"><option value="">Match the manner</option></select></label>
         <label>Where<input name="region"></label>
-        <label>Ring me<select id="ph-when"><option value="0">A few seconds after I'm ready</option><option value="2">At a random moment within 2 minutes</option><option value="5">At a random moment within 5 minutes</option><option value="15">At a random moment within 15 minutes</option></select></label>
         <label>Max call length (minutes)<input name="duration_min" type="number" min="2" max="30"></label>
       </div>
       <div id="ph-voiceblock" class="voice-block"></div>
@@ -167,16 +172,16 @@
 <main id="screen-mic" class="screen hidden">
   <div class="mic-layout">
     <section class="card narrow">
-      <h1>Quick mic check</h1>
-      <p>Read this aloud at your own pace; pauses and repeats are completely fine. It learns your voice (so other voices are ignored) and your calm baseline for the confidence report.</p>
-      <blockquote id="mic-sentence">Hello, my name is ___. I like talking about my work, my hobbies, and the places I have visited. Today I want to practise speaking with a new person.</blockquote>
+      <h1>Voice check</h1>
+      <p>Read this aloud at your own pace. The agent learns your voice, so other voices and its own echo are ignored.</p>
+      <blockquote id="mic-sentence">Hello, my name is ___. I like talking about my work, my hobbies, and the places I have visited. I'm ready to start whenever you are.</blockquote>
       <div class="meter"><div id="mic-level"></div></div>
       <div id="mic-transcript" class="transcript-box muted">Waiting for you to speak…</div>
       <p id="mic-status" class="muted"></p>
       <div class="actions"><button id="btn-skip" class="ghost">Skip</button><button id="btn-begin" class="primary" disabled>Start</button></div>
     </section>
     <section class="card prep-card hidden" id="prep-card">
-      <h2>Preparing your interview</h2>
+      <h2>Preparing the interview</h2>
       <ul id="prep-steps" class="prep-steps"></ul>
       <div id="prep-plan"></div>
     </section>
@@ -205,7 +210,7 @@
     </div>
   </div>
   <aside id="coach" class="coach hidden">
-    <h3>While you talk</h3>
+    <h3>Live signals</h3>
     <label>Patience<select id="live-patience"></select></label>
     <label class="check"><input type="checkbox" id="live-manual"> Only end my turn when I press Space</label>
     <h4>Signals</h4><dl id="signals"></dl>
@@ -230,16 +235,15 @@
 <!-- ============ report ============ -->
 <main id="screen-report" class="screen hidden">
   <section class="card wide">
-    <h1 id="report-title">Your feedback</h1>
-    <div id="report-status" class="muted">Analysing your speech and writing feedback…</div>
+    <h1 id="report-title">Report</h1>
+    <div id="report-status" class="muted">Writing the report…</div>
     <article id="report" class="report"></article>
-    <h2 class="hidden" id="speech-h">Speech &amp; confidence</h2>
-    <div id="speech-tiles" class="stats"></div>
-    <div id="speech-charts" class="charts"></div>
-    <article id="speech-report" class="report"></article>
-    <p class="muted small">Stammering and nervousness numbers are estimates from your audio and transcripts, for practice - not a clinical assessment.</p>
+    <h2 class="hidden" id="delivery-h">Delivery</h2>
+    <div id="delivery-tiles" class="stats"></div>
+    <div id="delivery-charts" class="charts"></div>
+    <p class="muted small hidden" id="delivery-note">Delivery metrics describe pace and timing only. They are not a judgement of the person and the agent's scores never use them.</p>
     <p id="report-folder" class="muted small"></p>
-    <div class="actions"><button class="primary" id="btn-again">Practise again</button></div>
+    <div class="actions"><button class="primary" id="btn-again">Start another session</button></div>
   </section>
 </main>
 
@@ -247,7 +251,7 @@
 <main id="screen-history" class="screen hidden">
   <section class="card wide">
     <h1>History</h1>
-    <p class="muted">Every session is saved with its report, speech analysis and your audio (in <code>data/sessions/</code>).</p>
+    <p class="muted">Every session is saved with its report, delivery metrics and the person's audio (in <code>data/sessions/</code>).</p>
     <table class="tbl" id="history-table"></table>
   </section>
 </main>
@@ -256,7 +260,7 @@
 <main id="screen-repos" class="screen hidden">
   <section class="card wide">
     <h1>Repository reports</h1>
-    <p class="muted">Saved analyses of your project repos. Interviews reuse them automatically; re-analyse after big changes.</p>
+    <p class="muted">Saved analyses of candidate repositories. Interviews reuse them automatically; re-analyse after big changes.</p>
     <div class="row"><input id="repo-src" placeholder="https://github.com/you/project or C:\path\to\project" style="flex:1">
       <button id="repo-analyze">Analyse</button><button id="repo-force" class="ghost">Re-analyse</button></div>
     <pre id="repo-job" class="log"></pre>

@@ -13,7 +13,7 @@ def preset(name: str) -> TurnConfig:
 STAMMER_FRIENDLY = preset("very_patient")
 
 
-def test_a_block_mid_sentence_is_not_the_end():
+def test_a_long_pause_mid_sentence_is_not_the_end():
     # sounded unfinished, the words say "not done", three seconds of silence
     signals = Signals(silence=3.0, smart_turn=0.2, semantic=0.1)
     assert end_reason(signals, STAMMER_FRIENDLY) is None

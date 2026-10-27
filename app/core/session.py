@@ -2,7 +2,8 @@
 
 The modes (interview, conversation, phone) subclass BaseSession and fill in the hooks. The base class does
 the rest: it feeds the microphone to the AudioWorker, streams the partner's reply into the voice sentence by
-sentence, handles interruptions and silences, and writes the reports at the end.
+sentence, handles interruptions and silences, and writes the report at the end. A session started through the
+REST API (app/api.py) brings its own setup and hands its result back to the API.
 """
 import asyncio
 import contextlib
@@ -14,6 +15,7 @@ from dataclasses import dataclass, field
 
 from fastapi import WebSocket
 
+from app.api import AgentSession, book
 from app.audio import cues
 from app.audio.tts import ENGINES, Voice
 from app.config import load, settings
@@ -50,9 +52,10 @@ class _Reply:
 class BaseSession:
     mode = "base"
 
-    def __init__(self, ws: WebSocket, models):
-        """`models` holds the shared STT, Smart Turn, speaker gate and TTS (see main.Models)."""
-        self.ws, self.models = ws, models
+    def __init__(self, ws: WebSocket, models, job: AgentSession | None = None):
+        """`models` holds the shared STT, Smart Turn, speaker gate and TTS (see main.Models); `job` is set when
+        the session was created through the API."""
+        self.ws, self.models, self.job = ws, models, job
         self.events: asyncio.Queue = asyncio.Queue()
         self.worker = AudioWorker(models.stt, models.smart_turn, models.speaker, asyncio.get_running_loop(),
                                   self.events.put_nowait)
@@ -68,7 +71,6 @@ class BaseSession:
         self.history: list[dict] = []  # the conversation so far, as LLM messages
         self.summary = ""              # older history, folded into notes by _compact()
         self.turns: list[UserTurn] = []
-        self.baseline: dict = {}       # the calm voice from the mic check
         self.opened_at = time.monotonic()
         self.started_at: float | None = None
         self.response_task: asyncio.Task | None = None
@@ -235,7 +237,7 @@ class BaseSession:
     async def _control(self, msg: dict) -> None:
         match msg.get("type"):
             case "setup":
-                await self.setup(msg)
+                await self.setup(self.job.request if self.job else msg)
                 self.worker.enroll_mode = True
             case "skip_enroll":
                 self.worker.enroll_mode = False
@@ -264,6 +266,8 @@ class BaseSession:
         await self.ready()
         self.spawn(self._warm())  # sockets can go stale during a long interview prep
         self.started_at = self._commit_at = time.monotonic()
+        if self.job:
+            book.started(self.job)
         await self.send({"type": "started", "duration_min": self.time_limit_min()})
         if opening := self.opening():
             self._add("user", opening)
@@ -304,7 +308,6 @@ class BaseSession:
             case "debug":
                 await self.send({"type": "debug", **ev})
             case "enrolled":
-                self.spawn(self._measure_baseline(ev))
                 await self.send({"type": "enrolled", "text": self.normalize(ev["text"]), "voiced": ev["voiced"],
                                  "speaker_gate": self.models.speaker is not None})
             case "enroll_failed":
@@ -363,12 +366,8 @@ class BaseSession:
         if not self.ending:
             self.start_reply()
 
-    async def _measure_baseline(self, ev: dict) -> None:
-        self.baseline = await asyncio.to_thread(analysis.acoustic_baseline, ev["audio"], ev["text"], ev["voiced"],
-                                                self.analysis_cfg)
-
     async def _analyse_turn(self, turn: UserTurn) -> None:
-        """The verbatim transcript (it keeps the repetitions) and the acoustic numbers, off the critical path."""
+        """A second, careful transcript (it keeps the fillers) and the delivery metrics, off the critical path."""
         revision = turn.revision
         if settings.refine_transcripts:
             prompt = f"{self.analysis_cfg.get('verbatim_prompt', '')} {self.whisper_hint()}"
@@ -376,7 +375,7 @@ class BaseSession:
             if verbatim and turn.revision == revision:
                 turn.verbatim = self.normalize(verbatim)  # jargon fixes only; the disfluencies stay
         if self.analysis_cfg.get("enabled", True) and turn.revision == revision:
-            turn.metrics = await asyncio.to_thread(analysis.turn_metrics, turn, self.analysis_cfg)
+            turn.metrics = analysis.turn_metrics(turn, self.analysis_cfg)
 
     # --- the partner talking ---
 
@@ -604,8 +603,7 @@ class BaseSession:
     # --- the end ---
 
     def transcript(self) -> str:
-        """For the content and grammar feedback. Stammer repetitions are taken out, so the coach never
-        "corrects" a stammer; the speech analysis works on the verbatim version instead."""
+        """For the report: restarts, repeated words and fillers are taken out, so it quotes what was meant."""
         fillers = self.analysis_cfg.get("fillers", [])
         lines = []
         for turn in self.turns:
@@ -623,39 +621,36 @@ class BaseSession:
         await self.send({"type": "ended"})
         if pending := [t for t in self.background if t is not asyncio.current_task()]:
             await asyncio.wait(pending, timeout=30)
-        await self.send({"type": "status", "text": "Analysing your speech and writing feedback..."})
-        await self.send({"type": "report", **(await self.save(write_reports=True))})
+        await self.send({"type": "status", "text": "Writing the report..."})
+        result = await self.save(write_reports=True)
+        if self.job and not self.job.show_report:
+            result = {"submitted": True}  # the report is for whoever created the session, not for the person
+        await self.send({"type": "report", **result})
         await self.send({"type": "usage", **USAGE})
         await self.close()  # frees the live slot for the next person
 
     async def save(self, write_reports: bool) -> dict:
-        enabled = self.analysis_cfg.get("enabled", True)
-        speech = analysis.summarize(self.turns, self.baseline, self.analysis_cfg) if enabled else {}
-        report = speech_report = ""
-        if write_reports and self.turns:
-            report, speech_report = await self._write_reports(speech)
-        elif write_reports:
-            report = "The session ended before you said anything."
+        delivery = analysis.summarize(self.turns) if self.analysis_cfg.get("enabled", True) else {}
+        report = ""
+        if write_reports:
+            report = await self._report() if self.turns else "The session ended before anything was said."
         record = {
             "mode": self.mode,
             "minutes": round((time.monotonic() - self.started_at) / 60, 1) if self.started_at else 0,
-            "speech_analysis": speech, "report_markdown": report, "speech_markdown": speech_report,
+            "delivery": delivery, "report_markdown": report,
             "summary": self.summary, "history": self.history,
             "turns": [turn.to_json() for turn in self.turns],
             **self.extra_record(),
         }
-        report_md = f"{report}\n\n## Speech & confidence\n\n{speech_report}" if write_reports else None
-        folder = sessions.save(self.mode, record, [turn.audio for turn in self.turns], report_md)
-        return {"markdown": report, "speech_markdown": speech_report, "speech": speech, "folder": folder}
+        folder = sessions.save(self.mode, record, [turn.audio for turn in self.turns],
+                               report if write_reports else None)
+        if self.job:
+            book.finished(self.job, record, completed=write_reports)
+        return {"markdown": report, "delivery": delivery, "folder": folder}
 
-    async def _write_reports(self, speech: dict) -> tuple[str, str]:
-        jobs = [self.mode_report(self.transcript()),
-                analysis.narrative(speech, self.turns, self.mode, self.analysis_cfg)]
-        if self.analysis_cfg.get("jev_confidence"):
-            jobs.append(analysis.jev_confidence(self.turns))
-        results = await asyncio.gather(*jobs, return_exceptions=True)
-        report = results[0] if isinstance(results[0], str) else f"_Report failed: {results[0]}_"
-        speech_report = results[1] if isinstance(results[1], str) else ""
-        if len(results) > 2 and isinstance(results[2], float) and speech.get("nervousness"):
-            speech["nervousness"]["wording_confidence_0_3"] = results[2]
-        return report, speech_report
+    async def _report(self) -> str:
+        try:
+            return await self.mode_report(self.transcript())
+        except Exception as e:  # the record is worth keeping even without a report
+            log.exception("report failed")
+            return f"_Report failed: {e}_"

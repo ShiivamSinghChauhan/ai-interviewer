@@ -1,4 +1,4 @@
-// Phone-call practice: waits for (or places) a call, rings, phone-line audio, call screen.
+// Phone agent: waits for the agent's call (or places one to its line), rings, phone-line audio, call screen.
 const Phone = {
   opts: null, voice: null, call: null, stopTone: null, stopLine: null, declines: 0, waitTimer: null,
   async init() {
@@ -24,11 +24,13 @@ const Phone = {
     const f = $("#ph-form"), v = this.voice();
     const setup = Object.fromEntries(new FormData(f));
     setup.duration_min = Number(setup.duration_min);
-    const win = Number($("#ph-when").value);
-    setup.surprise_window_min = win;
     Object.assign(setup, v);
     if (!setup.line) delete setup.line;
     store.set("ph_last", setup);
+    await this.launch(setup);
+  },
+
+  async launch(setup) {
     this.call = null; this.declines = 0;
     S.handlers = {
       ready: (m) => { this.call = m.call; },
@@ -39,7 +41,7 @@ const Phone = {
       ended: () => { this.cleanup(); },
     };
     $("#mic-sentence").textContent = "Hello, this is ___ speaking. Yes, I can hear you. Could you please repeat the order number? Thank you, bye.";
-    await beginSetup({ setup }, { headphones: v.headphones });
+    await beginSetup({ setup }, { headphones: setup.headphones });
   },
 
   async waitForCall() {

@@ -1,24 +1,50 @@
-# Practice Studio
+# Voice Agent Studio
 
-**[Try it live](https://shiivamchauhan-practice-studio.hf.space)** (free hosting, so give it two minutes if it was asleep)
+**[Live demo](https://shiivamchauhan-practice-studio.hf.space)** · **[API docs](https://shiivamchauhan-practice-studio.hf.space/docs)**
+(free hosting: give it two minutes if it was asleep)
 
-Voice practice for the three things I'd rather avoid: **job interviews**, **phone calls** and **small talk
-with strangers**. I also stammer. Most voice AIs take a two-second block as their cue to interrupt. This one
-waits.
+Real-time voice agents that listen properly. Each one waits until the person has actually finished (a pause to
+think is not the end of a turn), answers in about a second, and hands back a structured result: every answer
+with its transcript, timing and scores, delivery metrics, and a written report.
 
-It runs on a laptop CPU and costs ₹0. Speech recognition is local, and the LLMs and voices use free tiers,
-switching to the next key whenever one runs dry.
+It runs on a CPU. Speech recognition is local; the LLMs and voices use hosted APIs with automatic failover.
 
-## Modes
+## Agents
 
-- **🎯 Interview:** reads your JD, resume and project repos, plans fresh questions, interviews you by voice,
-  then writes a hiring-manager report.
-- **📞 Phone call:** a random caller rings you (delivery guy, recruiter, scammer...), or you have to call
-  someone and get a thing done. Phone-line audio included, awkward silences optional.
-- **💬 Conversation:** chat with a stranger whose accent, age, job and personality you design.
+- **🎯 Interviewer:** reads the JD, the candidate's resume and their repositories, plans questions, runs the
+  screening interview by voice, scores every answer while it runs, and writes a hiring-manager report.
+- **📞 Phone agent:** calls the person (delivery, appointment, verification, payment reminder) or answers a
+  business line (clinic, support, reservations), on phone-line audio. Every call is generated fresh.
+- **💬 Persona agent:** whoever you describe: a support agent, a sales rep, a language tutor, a character for
+  role-play, with its own voice, accent and personality.
 
-Every session ends with feedback plus a speech report: how much you stammered, how nervous you sounded, and
-whether you settled down. These are estimates for practice, not a diagnosis.
+Try any of them in the browser, or create sessions from your own product through the API.
+
+## The API
+
+```bash
+curl -X POST https://shiivamchauhan-practice-studio.hf.space/api/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"agent": "interview",
+       "setup": {"candidate_name": "Priya", "role": "Backend Engineer", "duration_min": 10,
+                 "jd": "Payment APIs in Python and Postgres"},
+       "metadata": {"candidate_id": "c-1042"}}'
+# -> {"id": "...", "status": "created", "join_url": "https://.../?session=...", ...}
+```
+
+Send `join_url` to the person. They open it, do a ten-second voice check and talk to the agent; they don't see
+the report. Then:
+
+- `GET /api/v1/sessions/{id}` returns the status (`created` → `live` → `completed` / `abandoned`, or `expired`
+  after a day unused) and, once it's over, the `result`: `turns` (question, answer, verbatim transcript,
+  response time, pauses, per-answer scores), `delivery`, `report_markdown`, plus what the agent prepared.
+- Or pass `webhook_url` and get the same JSON POSTed to you, signed with `X-Signature: sha256=<HMAC of the
+  body>` using `WEBHOOK_SECRET`, retried with backoff.
+- With `API_TOKENS` set, every call needs `Authorization: Bearer <token>`.
+
+[`examples/api_client.py`](examples/api_client.py) does the whole round trip, and `/docs` has the
+interactive reference. The fields under `setup` are the agent's setup screen; `GET /api/{agent}/options`
+lists them with their defaults.
 
 ## How it works
 
@@ -26,27 +52,34 @@ whether you settled down. These are estimates for practice, not a diagnosis.
 flowchart LR
   mic["Browser mic<br/>(AudioWorklet, 16 kHz)"] -- WebSocket --> vad[Silero VAD]
   vad --> stt["Nemotron 0.6B<br/>streaming STT, on CPU"]
-  stt --> vote{"Done talking?<br/>silence + Smart Turn + Jev"}
+  stt --> vote{"Finished?<br/>silence + Smart Turn + semantic check"}
   vote -- yes --> llm["LLM chain<br/>Groq → OpenRouter"]
-  llm -- "sentence by sentence" --> tts["edge-tts / Fish / ElevenLabs"]
+  llm -- "sentence by sentence" --> tts["edge-tts / ElevenLabs / Fish"]
   tts -- "audio clips" --> mic
+  vote -. "each answer" .-> score["Typed scoring<br/>(TypeSafe Jev)"]
 ```
 
 The parts that took the longest:
 
-- **Not interrupting a stammer.** A pause isn't the end of a turn, so three signals vote: silence, Smart Turn
-  (does it *sound* finished?) and Jev (is the *thought* finished?). A trailing "and..." or a "let me think"
-  buys extra time. The rules live in [`app/core/turns.py`](app/core/turns.py) and are pinned down by
+- **Not cutting people off.** Silence alone is a bad signal: people pause to think, restart sentences and get
+  stuck on words. Three signals vote, cheapest first: silence (Silero VAD), Smart Turn (does the audio *sound*
+  finished?) and a semantic check (is the *thought* finished?). A trailing "and..." or "let me think" buys
+  time. The rules are one pure function, [`end_reason`](app/core/turns.py), pinned down by
   [`tests/test_turn_end.py`](tests/test_turn_end.py).
-- **Ignoring the TV.** The mic check takes a voice print (TitaNet). Other voices, and the partner's own echo,
-  don't count as you.
-- **About a second to reply, on free tiers.** The first sentence is cut short so the voice starts early, TTS
-  sockets stay warm, a slow edge-tts request gets raced against a spare socket, and a model that hasn't said
-  anything in 6 seconds gets skipped.
-- **₹0, more or less forever.** Every provider takes several keys. A rate limit benches that key for that model
-  only, and the next key takes over ([`app/llm/keypool.py`](app/llm/keypool.py)).
-- **Doing the homework.** Before the first question the interviewer reads the JD, the resume and the code in
-  your repos (cached per commit), then plans questions it hasn't asked you before.
+- **Only the right voice counts.** The voice check takes a TitaNet voice print, so the TV, a colleague and
+  the agent's own echo are ignored.
+- **About a second to reply.** The LLM streams into the voice sentence by sentence (the first clause is cut
+  short so audio starts early), TTS sockets stay warm, a slow edge-tts request is raced against a spare
+  socket, and common openers are cached. Measured on the live demo: 0.8–1.2 s from end of turn to first audio.
+- **It keeps working when a provider doesn't.** Every provider takes several keys; a rate limit benches that
+  key for that model only ([`keypool.py`](app/llm/keypool.py)). A model that hasn't started answering in 6 s
+  is skipped, a premium voice slower than 6 s falls back to edge-tts, and edge-tts falls back to Kokoro offline.
+- **Scores you can rely on.** Grading never asks for free text: each answer goes to a typed classifier and
+  comes back as fixed rubric levels (correctness, depth, communication), a yes/no for on-topic and one of five
+  next moves. Planning steps return JSON; broken JSON falls through to the next model.
+
+Delivery metrics (pace, response time, long pauses, fillers, answer length) describe *how* things were said.
+They are reported separately and never feed the scores.
 
 ## Run it
 
@@ -58,36 +91,33 @@ Put your keys in `.env` (copy `.env.example`). Every `*_API_KEYS` takes a comma-
 
 | Key | For |
 |---|---|
-| `GROQ_API_KEYS` | the brain + Whisper |
-| `OPENROUTER_API_KEYS` | backup brain |
-| `JEV_API_KEYS`, `SCALEDOWN_API_KEYS` | "are they done talking?", answer grading |
-| `FISH_API_KEYS` | expressive voices that can sigh and sound sceptical (free model) |
-| `ELEVENLABS_API_KEYS` | the most natural voices |
+| `GROQ_API_KEYS` | the agents' LLM, plus Whisper for the final transcripts |
+| `OPENROUTER_API_KEYS` | backup LLM |
+| `JEV_API_KEYS`, `SCALEDOWN_API_KEYS` | the semantic end-of-turn check and answer scoring |
+| `FISH_API_KEYS`, `ELEVENLABS_API_KEYS` | premium voices (edge-tts works without any key) |
 
-No voice keys? You get edge-tts, which is free and perfectly fine. `python -m scripts.check_keys` tells you
-which keys work.
-
-All behaviour (prompts, personas, scenarios, timings, voices, models) lives in `config/*.yaml`, and the
-**Settings** page edits it. Changes apply from the next session.
+`python -m scripts.check_keys` tells you which keys work. Everything the agents do (prompts, scenarios,
+personas, timings, voices, models) lives in `config/*.yaml`, and the **Settings** page edits it.
 
 ## Develop
 
 ```powershell
 pip install -r requirements-dev.txt
-pytest                                                # turn-taking, key rotation, analysis, storage
+pytest                                                    # turn-taking, API, key rotation, metrics, storage
 ruff check .
-python -m scripts.smoke_test --mode phone --report    # a fake user with a fake stammer calls the running app
+python -m scripts.smoke_test --mode interview --api       # a synthetic person does a whole session via the API
 ```
 
 ## Deploy
 
 The live demo is a free Hugging Face Space. Free accounts only get Gradio on ZeroGPU these days, so
-[`space.py`](space.py) wears a Gradio costume: it registers a GPU function that never runs (ZeroGPU won't boot
-without one), then hands the port to the real app. It runs in public mode: one visitor at a time, nothing
-saved, settings read-only, sessions capped at 20 minutes.
+[`space.py`](space.py) registers a GPU function that never runs (ZeroGPU won't boot without one) and then
+serves the real app. Public mode: one session at a time, nothing saved, settings read-only, sessions capped at
+20 minutes, no webhooks and no session listing.
 
 ```powershell
-python -m scripts.deploy_space you/practice-studio --secrets   # needs HF_TOKEN in .env
+python -m scripts.deploy_space you/voice-agents --secrets   # needs HF_TOKEN in .env
 ```
 
-Anywhere that runs containers, the [`Dockerfile`](Dockerfile) does the same job without the costume.
+Anywhere that runs containers, the [`Dockerfile`](Dockerfile) does the same job. On your own server, set
+`API_TOKENS`, `WEBHOOK_SECRET` and `PUBLIC_URL`.
