@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import httpx
 import pytest
@@ -40,7 +41,7 @@ def test_daily_quota_waits_longer_than_a_minute_limit():
     pool = KeyPool("openrouter", ["k1"])
     key = pool.keys[0]
     pool.fail(key, 429, "Rate limit exceeded: free-models-per-day", model="gemma")
-    assert key.model_benched["gemma"] - key.benched_until > 3000
+    assert key.model_benched["gemma"] - time.monotonic() > 3000  # an hour, not the 10 s of a minute limit
 
 
 def test_server_errors_stop_at_once():
