@@ -1,7 +1,7 @@
 """Create a session through the API, hand out the link, wait for the result.
 
-    python examples/api_client.py --url https://shiivamchauhan-voice-agent.hf.space
-    python examples/api_client.py --url http://127.0.0.1:8000 --token <one of API_TOKENS> --agent phone
+    python examples/api_client.py --url https://shiivamchauhan-ai-interviewer.hf.space
+    python examples/api_client.py --url http://127.0.0.1:8000 --token <one of API_TOKENS>
 
 Open the printed join_url in Chrome or Edge, talk to the agent, and the script prints every answer with its
 scores, the delivery metrics and the agent's report. A real integration passes webhook_url instead of polling.
@@ -20,7 +20,6 @@ SESSIONS = {
                   "jd": "Build payment APIs in Python (FastAPI) on PostgreSQL: caching, idempotency, testing."},
         "metadata": {"candidate_id": "c-1042"},
     },
-    "phone": {"agent": "phone", "setup": {"scenario": "book_doctor", "duration_min": 5}},
 }
 
 

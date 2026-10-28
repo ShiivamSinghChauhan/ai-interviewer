@@ -1,6 +1,6 @@
 """One live voice session over a WebSocket.
 
-The modes (interview, conversation, phone) subclass BaseSession and fill in the hooks. The base class does
+The interviewer (app/modes/interview) subclasses BaseSession and fill in the hooks. The base class does
 the rest: it feeds the microphone to the AudioWorker, streams the partner's reply into the voice sentence by
 sentence, handles interruptions and silences, and writes the report at the end. A session started through the
 REST API (app/api.py) brings its own setup and hands its result back to the API.

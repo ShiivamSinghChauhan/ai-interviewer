@@ -94,7 +94,7 @@ pronounce:
     vs.: versus
     TTFT: time to first token
 
-# accent -> edge-tts voices (all verified to exist). Used by conversation and phone modes.
+# accent -> edge-tts voices (all verified to exist): the agent's voice, and the fallback for premium voices.
 accents:
   Indian: {male: en-IN-PrabhatNeural, female: en-IN-NeerjaNeural}
   American: {male: en-US-AndrewNeural, female: en-US-AvaNeural}

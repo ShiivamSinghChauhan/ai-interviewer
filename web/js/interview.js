@@ -79,7 +79,6 @@ const Interview = {
     $("#partner-label").textContent = `${setup.interviewer_name || "Interviewer"} · Interviewer`;
     $("#room-sub").textContent = "Introduction";
     $("#live-manual").checked = !!setup.manual_turns;
-    S.handlers = {};
     if (await beginSetup({ setup, repos, overrides }, { headphones: setup.headphones, prep }))
       $("#live-patience").value = setup.patience || "patient";
   },

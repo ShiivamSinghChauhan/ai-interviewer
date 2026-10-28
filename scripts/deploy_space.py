@@ -1,7 +1,7 @@
 """Publish the app as a Hugging Face Space (Gradio SDK on free ZeroGPU hardware, started by space.py).
 
     pip install -r requirements-dev.txt
-    python -m scripts.deploy_space you/voice-agent --secrets
+    python -m scripts.deploy_space you/ai-interviewer --secrets
 
 Needs HF_TOKEN, a write token from huggingface.co/settings/tokens, in .env or the environment. --secrets copies
 the *_API_KEYS from .env into the Space's secrets, which only the running app can read. Every run mirrors the
@@ -22,7 +22,7 @@ SKIPPED = shutil.ignore_patterns("__pycache__", "*.bak", "*.pyc")
 SECRETS = [f"{provider.upper()}_API_KEYS" for provider in PROVIDERS]
 VARIABLES = ["LLM_CHAIN", "REPORT_LLM_CHAIN", "DECISIONS_CHAIN", "TTS_ENGINE", "FISH_MODEL", "ELEVENLABS_MODEL"]
 SPACE_CARD = """---
-title: Voice Agent Studio
+title: AI Interviewer
 emoji: 🎙️
 colorFrom: green
 colorTo: blue
@@ -31,10 +31,10 @@ sdk_version: 6.30.0
 python_version: "3.12"
 app_file: space.py
 pinned: false
-short_description: Real-time voice agents with a REST API
+short_description: Real-time voice interviewer with a REST API
 ---
 
-Real-time voice agents (an interviewer, a phone agent and a persona agent) that run on a CPU, with a REST API.
+A real-time voice interviewer that runs on a CPU, with a REST API.
 API reference: /docs on the running Space.
 {source}
 """
@@ -53,7 +53,7 @@ def stage(folder: Path, source_url: str) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("space", help="owner/name, e.g. shiivamchauhan/voice-agent")
+    ap.add_argument("space", help="owner/name, e.g. shiivamchauhan/ai-interviewer")
     ap.add_argument("--secrets", action="store_true", help="copy the API keys from .env into the Space's secrets")
     ap.add_argument("--source", default="", help="link to the source code, shown on the Space's page")
     args = ap.parse_args()

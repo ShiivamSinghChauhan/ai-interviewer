@@ -47,7 +47,7 @@ def test_unknown_agent_and_session(client):
 
 def test_tokens(client, monkeypatch):
     monkeypatch.setattr(settings, "api_tokens", ["s3cret"])
-    body = {"agent": "phone"}
+    body = {"agent": "interview"}
     assert client.post("/api/v1/sessions", json=body).status_code == 401
     assert client.post("/api/v1/sessions", json=body, headers={"Authorization": "Bearer wrong"}).status_code == 401
     assert client.post("/api/v1/sessions", json=body, headers={"Authorization": "Bearer s3cret"}).status_code == 201
@@ -55,7 +55,7 @@ def test_tokens(client, monkeypatch):
 
 def test_public_demo_limits(client, monkeypatch):
     monkeypatch.setattr(settings, "public_demo", True)
-    hook = {"agent": "phone", "webhook_url": "http://169.254.169.254/latest"}
+    hook = {"agent": "interview", "webhook_url": "http://169.254.169.254/latest"}
     assert client.post("/api/v1/sessions", json=hook).status_code == 400  # no webhooks from a public server
     assert client.get("/api/v1/sessions").status_code == 403             # nor a list of other people's sessions
 
@@ -100,7 +100,7 @@ def _webhook(monkeypatch, statuses: list[int]) -> list[httpx.Request]:
 def test_webhook_is_signed(monkeypatch):
     monkeypatch.setattr(settings, "webhook_secret", "hush")
     seen = _webhook(monkeypatch, [200])
-    session = api.AgentSession(id="abc", agent="phone", request={}, webhook_url="https://example.com/hook")
+    session = api.AgentSession(id="abc", agent="interview", request={}, webhook_url="https://example.com/hook")
     asyncio.run(api.deliver(session, pause_s=0))
     body = seen[0].content
     expected = "sha256=" + hmac.new(b"hush", body, hashlib.sha256).hexdigest()
@@ -111,7 +111,7 @@ def test_webhook_is_signed(monkeypatch):
 
 def test_webhook_retries_then_gives_up(monkeypatch):
     seen = _webhook(monkeypatch, [500, 502, 503])
-    session = api.AgentSession(id="abc", agent="phone", request={}, webhook_url="https://example.com/hook")
+    session = api.AgentSession(id="abc", agent="interview", request={}, webhook_url="https://example.com/hook")
     asyncio.run(api.deliver(session, pause_s=0))
     assert len(seen) == api.WEBHOOK_TRIES
     assert session.webhook == {"delivered": False, "error": "HTTP 503", "attempts": 3}

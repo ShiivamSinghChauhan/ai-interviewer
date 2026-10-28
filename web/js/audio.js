@@ -1,4 +1,4 @@
-// Audio in and out: mic capture, clip playback, the phone-line effect and ring tones.
+// Audio in and out: mic capture and clip playback.
 
 function openMic(deviceId) {
   const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 };
@@ -73,57 +73,6 @@ async function loopbackOutput(ctx) {
   return dest;
 }
 
-// Telephone sound for the caller's voice: 300-3400 Hz band, light compression, line hiss, dropouts.
-function phoneLine(line) {
-  const ctx = S.playCtx;
-  const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = line.bandpass ? 300 : 40;
-  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = line.bandpass ? 3400 : 16000;
-  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -24; comp.ratio.value = 4;
-  const drop = ctx.createGain();
-  hp.connect(lp).connect(comp).connect(drop).connect(S.outAnalyser);
-  S.outInput = hp;
-  let noiseSrc = null, dropTimer = null;
-  if (line.noise > 0) {
-    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    noiseSrc = ctx.createBufferSource(); noiseSrc.buffer = buf; noiseSrc.loop = true;
-    const nf = ctx.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = 1500; nf.Q.value = 0.6;
-    const ng = ctx.createGain(); ng.gain.value = line.noise;
-    noiseSrc.connect(nf).connect(ng).connect(S.outAnalyser);
-    noiseSrc.start();
-  }
-  if (line.dropouts) {
-    dropTimer = setInterval(() => {
-      if (Math.random() < 0.25) {
-        const t = ctx.currentTime;
-        drop.gain.setValueAtTime(1, t); drop.gain.linearRampToValueAtTime(0.08, t + 0.03);
-        drop.gain.linearRampToValueAtTime(1, t + 0.15 + Math.random() * 0.25);
-      }
-    }, 3000);
-  }
-  return () => { if (noiseSrc) noiseSrc.stop(); if (dropTimer) clearInterval(dropTimer); S.outInput = S.outAnalyser; };
-}
-
-// pattern: [[on_s, off_s], ...], repeated until the returned function is called
-function tone(pattern, freqs, gain = 0.12) {
-  const ctx = S.playCtx;
-  let stopped = false, timer = null;
-  const play = () => {
-    if (stopped) return;
-    let t = ctx.currentTime, total = 0;
-    for (const [on, off] of pattern) {
-      const g = ctx.createGain(); g.gain.value = 0; g.connect(S.outAnalyser);
-      for (const f of freqs) { const o = ctx.createOscillator(); o.frequency.value = f; o.connect(g); o.start(t + total); o.stop(t + total + on); }
-      g.gain.setValueAtTime(gain, t + total); g.gain.setValueAtTime(0, t + total + on);
-      total += on + off;
-    }
-    timer = setTimeout(play, total * 1000);
-  };
-  play();
-  return () => { stopped = true; clearTimeout(timer); };
-}
-
 function rms(analyser) {
   const buf = new Float32Array(analyser.fftSize);
   analyser.getFloatTimeDomainData(buf);
@@ -147,7 +96,6 @@ function meters() {
   const out = Math.min(1, rms(S.outAnalyser) * 8);
   const glow = `0 0 0 ${Math.round(out * 22)}px rgba(91,140,255,${0.15 + out * 0.35})`;
   $("#avatar").style.boxShadow = glow;
-  $("#ph-avatar").style.boxShadow = glow;
   requestAnimationFrame(meters);
 }
 
@@ -173,7 +121,6 @@ function enqueueClip(header, audio) {
       send({ type: "clip_start", id: header.id });
       S.aiCaption = (S.aiCaption + " " + header.text).trim();
       $("#cap-ai").textContent = S.aiCaption;
-      $("#ph-caption").textContent = S.aiCaption;
       setState("speaking");
     }, Math.max(0, (at - ctx.currentTime) * 1000));
     src.onended = () => { if (gen !== S.gen) return; S.active.delete(src); S.pending--; checkIdle(); };

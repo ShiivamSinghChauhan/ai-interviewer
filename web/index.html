@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Voice Agent Studio</title>
-  <meta name="description" content="Real-time voice agents - an interviewer, a phone agent and a persona agent - with a REST API.">
+  <title>AI Interviewer</title>
+  <meta name="description" content="A real-time voice interviewer that reads the JD, the resume and the code, with a REST API.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='6' fill='%233ecf8e'/></svg>">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="#" id="home-link"><span class="dot"></span> Voice Agent Studio</a>
+  <a class="brand" href="#" id="home-link"><span class="dot"></span> AI Interviewer</a>
   <div class="row">
     <div id="pills" class="pills"></div>
     <button class="ghost small-btn" id="nav-history">History</button>
@@ -23,9 +23,9 @@
 <!-- ============ home ============ -->
 <main id="screen-home" class="screen">
   <section class="home">
-    <h1>Real-time voice agents</h1>
-    <p class="muted">Each agent listens, waits until you have really finished (pauses are fine) and answers in a second
-      or two. Pick one and play the person on the other end. Businesses create sessions through the
+    <h1>A real-time voice interviewer</h1>
+    <p class="muted">It listens, waits until you have really finished (pauses are fine) and answers in a second or
+      two. Play the candidate here, or create sessions through the
       <a href="/docs" target="_blank" rel="noopener">REST API</a> and get transcripts, scores and a report back.</p>
     <p id="demo-note" class="demo-note hidden"></p>
     <div class="mode-cards">
@@ -33,16 +33,6 @@
         <span class="icon">🎯</span><b>Interviewer agent</b>
         <span>Reads the JD, the resume and the candidate's repositories, runs a screening interview, scores every
           answer and writes a hiring report.</span>
-      </button>
-      <button class="mode-card" data-mode="conversation">
-        <span class="icon">💬</span><b>Persona agent</b>
-        <span>Any role you describe: a support agent, a sales rep, a tutor or a character, with its own voice,
-          accent and personality.</span>
-      </button>
-      <button class="mode-card" data-mode="phone">
-        <span class="icon">📞</span><b>Phone agent</b>
-        <span>Calls the person (deliveries, reminders, verification) or answers a business line (clinic, support,
-          reservations), on phone-line audio.</span>
       </button>
     </div>
   </section>
@@ -92,82 +82,6 @@
   </section>
 </main>
 
-<!-- ============ conversation setup ============ -->
-<main id="screen-conversation" class="screen hidden">
-  <section class="card wide">
-    <div class="row-between">
-      <div><h1>Persona agent</h1>
-        <p class="muted">Describe who the agent is and what the conversation is for, start from a preset, or let chance decide.</p></div>
-      <div class="row">
-        <select id="cv-preset"><option value="">Presets…</option></select>
-        <select id="cv-saved"><option value="">Saved agents…</option></select>
-        <button id="cv-surprise" type="button">🎲 Surprise me</button>
-      </div>
-    </div>
-    <form id="cv-form">
-      <h3>Who the agent is</h3>
-      <div class="grid3">
-        <label>Name<input name="name"></label>
-        <label>Age <span class="val" id="cv-age-val"></span><input name="age" type="range" min="18" max="80"></label>
-        <label>Gender<select name="gender"><option value="female">Female</option><option value="male">Male</option></select></label>
-        <label>Accent / background<select name="accent" id="cv-accent"></select></label>
-        <label>Hometown<input name="hometown" placeholder="e.g. Pune, India"></label>
-        <label>Occupation<input name="occupation"></label>
-      </div>
-      <label>Backstory (optional)<textarea name="backstory" rows="2" placeholder="Leave empty and the agent invents a consistent one."></textarea></label>
-      <fieldset><legend>Interests</legend><div id="cv-interests" class="chips"></div>
-        <input id="cv-interest-add" class="chip-input" placeholder="+ add your own and press Enter"></fieldset>
-      <h3>Personality</h3>
-      <div id="cv-traits" class="traits"></div>
-      <h3>The conversation</h3>
-      <div class="grid3">
-        <label>Type<select name="mode" id="cv-mode"></select></label>
-        <label>Where<select name="scene" id="cv-scene"></select></label>
-        <label>You are<select name="relationship" id="cv-relationship"></select></label>
-        <label class="span3">Topic to start with (optional)<input name="topic"></label>
-        <label class="span3" id="cv-scenario-wrap">Role-play scenario<input name="scenario"></label>
-        <label>Who starts<select name="who_starts"><option value="them">The agent</option><option value="me">The person</option></select></label>
-        <label>Length (minutes)<input name="duration_min" type="number" min="3" max="90"></label>
-        <label>Person's name (optional)<input name="user_name"></label>
-      </div>
-      <h3>How the agent speaks</h3>
-      <div class="grid3">
-        <label>Language level<select name="level" id="cv-level"></select></label>
-        <label>Reply length<select name="length" id="cv-length"></select></label>
-        <label>Language corrections<select name="corrections" id="cv-corrections"></select></label>
-      </div>
-      <div class="checks">
-        <label class="check"><input type="checkbox" name="keep_me_talking" checked> Ask open questions to keep the person talking</label>
-        <label class="check"><input type="checkbox" name="stay_in_character" checked> Stay in character (off: says it is an AI when asked)</label>
-      </div>
-      <div id="cv-voiceblock" class="voice-block"></div>
-      <div class="actions"><button type="button" id="cv-save" class="ghost">Save this agent</button>
-        <button class="primary" type="submit">Continue</button></div>
-    </form>
-  </section>
-</main>
-
-<!-- ============ phone setup ============ -->
-<main id="screen-phone" class="screen hidden">
-  <section class="card wide">
-    <h1>Phone agent</h1>
-    <p class="muted">The agent calls you with a purpose (outbound), or you call its line with a task (inbound). Every call is generated fresh from the scenario.</p>
-    <form id="ph-form">
-      <div class="grid3">
-        <label>Call type<select name="direction"><option value="incoming">Outbound: the agent calls me</option><option value="outgoing">Inbound: I call the agent</option><option value="any">Either</option></select></label>
-        <label>Industry<select name="category" id="ph-category"></select></label>
-        <label>Scenario<select name="scenario" id="ph-scenario"></select></label>
-        <label>Agent manner<select name="difficulty" id="ph-difficulty"></select></label>
-        <label>Phone line<select name="line" id="ph-line"><option value="">Match the manner</option></select></label>
-        <label>Where<input name="region"></label>
-        <label>Max call length (minutes)<input name="duration_min" type="number" min="2" max="30"></label>
-      </div>
-      <div id="ph-voiceblock" class="voice-block"></div>
-      <div class="actions"><button class="primary" type="submit">Continue</button></div>
-    </form>
-  </section>
-</main>
-
 <!-- ============ mic check (+ interview prep progress) ============ -->
 <main id="screen-mic" class="screen hidden">
   <div class="mic-layout">
@@ -190,7 +104,7 @@
   </div>
 </main>
 
-<!-- ============ video-call room (interview + conversation) ============ -->
+<!-- ============ video-call room ============ -->
 <main id="screen-room" class="screen hidden">
   <div class="room">
     <div class="room-top"><span id="room-sub"></span><span id="timer" class="timer">00:00</span></div>
@@ -219,19 +133,6 @@
     <h4>Last answer</h4><p id="assessment" class="small muted">-</p>
     <h4>Log</h4><div id="log" class="log"></div>
   </aside>
-</main>
-
-<!-- ============ phone ============ -->
-<main id="screen-call" class="screen hidden">
-  <div class="phone">
-    <div class="phone-status" id="ph-status">Waiting for a call…</div>
-    <div class="phone-avatar" id="ph-avatar">📞</div>
-    <div class="phone-caller" id="ph-caller">-</div>
-    <div class="phone-sub" id="ph-sub"></div>
-    <div class="phone-task hidden" id="ph-task"></div>
-    <div class="phone-caption" id="ph-caption"></div>
-    <div class="phone-buttons" id="ph-buttons"></div>
-  </div>
 </main>
 
 <!-- ============ report ============ -->
@@ -276,7 +177,7 @@
   <section class="card wide">
     <h1>Settings</h1>
     <p class="muted" id="cfg-note">Every behaviour, prompt, preset, scenario and model choice lives in these files (<code>config/*.yaml</code>). Changes apply to the next session; a backup of the previous version is kept.</p>
-    <div class="row"><select id="cfg-file"><option>common</option><option>interview</option><option>conversation</option><option>phone</option></select>
+    <div class="row"><select id="cfg-file"><option>common</option><option>interview</option></select>
       <button id="cfg-save" class="primary">Save</button><span id="cfg-msg" class="muted small"></span></div>
     <textarea id="cfg-text" class="cfg-text" spellcheck="false"></textarea>
   </section>
@@ -288,8 +189,6 @@
 <script src="/static/js/markdown.js"></script>
 <script src="/static/js/report.js"></script>
 <script src="/static/js/interview.js"></script>
-<script src="/static/js/conversation.js"></script>
-<script src="/static/js/phone.js"></script>
 <script src="/static/js/tools.js"></script>
 </body>
 </html>

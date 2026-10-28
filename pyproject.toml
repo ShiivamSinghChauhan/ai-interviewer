@@ -1,7 +1,7 @@
 [project]
-name = "voice-agent"
+name = "ai-interviewer"
 version = "1.0.0"
-description = "Voice practice for interviews, phone calls and small talk, built to be patient with stammering."
+description = "A real-time voice interviewer that reads the JD, the resume and the code, with a REST API."
 requires-python = ">=3.12"
 
 [tool.ruff]

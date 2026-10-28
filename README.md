@@ -1,29 +1,23 @@
-# Voice Agent Studio
+# AI Interviewer
 
-**[Live demo](https://shiivamchauhan-voice-agent.hf.space)** · **[API docs](https://shiivamchauhan-voice-agent.hf.space/docs)**
+**[Live demo](https://shiivamchauhan-ai-interviewer.hf.space)** · **[API docs](https://shiivamchauhan-ai-interviewer.hf.space/docs)**
 (free hosting: give it two minutes if it was asleep)
 
-Real-time voice agents that listen properly. Each one waits until the person has actually finished (a pause to
-think is not the end of a turn), answers in a second or two, and hands back a structured result: every answer
-with its transcript, timing and scores, delivery metrics, and a written report.
+A real-time voice interviewer that listens properly. It reads the JD, the candidate's resume and their
+repositories, runs the screening interview by voice, waits until the candidate has actually finished (a pause
+to think is not the end of a turn), answers in a second or two, and hands back a structured result: every
+answer with its transcript, timing and scores, delivery metrics, and a hiring-manager report.
 
 It runs on a CPU. Speech recognition is local; the LLMs and voices use hosted APIs with automatic failover.
 
-## Agents
-
-- **🎯 Interviewer:** reads the JD, the candidate's resume and their repositories, plans questions, runs the
-  screening interview by voice, scores every answer while it runs, and writes a hiring-manager report.
-- **📞 Phone agent:** calls the person (delivery, appointment, verification, payment reminder) or answers a
-  business line (clinic, support, reservations), on phone-line audio. Every call is generated fresh.
-- **💬 Persona agent:** whoever you describe: a support agent, a sales rep, a language tutor, a character for
-  role-play, with its own voice, accent and personality.
-
-Try any of them in the browser, or create sessions from your own product through the API.
+Try it in the browser as the candidate, or create interviews from your own product through the API.
+Optional preparation (off by default, so the interview starts right away) analyses the JD and the resume,
+reads the attached repositories, plans unique questions per section and has a bar-raiser review the plan.
 
 ## The API
 
 ```bash
-curl -X POST https://shiivamchauhan-voice-agent.hf.space/api/v1/sessions \
+curl -X POST https://shiivamchauhan-ai-interviewer.hf.space/api/v1/sessions \
   -H "Content-Type: application/json" \
   -d '{"agent": "interview",
        "setup": {"candidate_name": "Priya", "role": "Backend Engineer", "duration_min": 10,
@@ -32,8 +26,8 @@ curl -X POST https://shiivamchauhan-voice-agent.hf.space/api/v1/sessions \
 # -> {"id": "...", "status": "created", "join_url": "https://.../?session=...", ...}
 ```
 
-Send `join_url` to the person. They open it, do a ten-second voice check and talk to the agent; they don't see
-the report. Then:
+Send `join_url` to the candidate. They open it, do a ten-second voice check and take the interview; they don't
+see the report. Then:
 
 - `GET /api/v1/sessions/{id}` returns the status (`created` → `live` → `completed` / `abandoned`, or `expired`
   after a day unused) and, once it's over, the `result`: `turns` (question, answer, verbatim transcript,
@@ -43,8 +37,8 @@ the report. Then:
 - With `API_TOKENS` set, every call needs `Authorization: Bearer <token>`.
 
 [`examples/api_client.py`](examples/api_client.py) does the whole round trip, and `/docs` has the
-interactive reference. The fields under `setup` are the agent's setup screen; `GET /api/{agent}/options`
-lists them with their defaults.
+interactive reference. The fields under `setup` are the setup screen's; `GET /api/interview/options` lists
+them with their defaults. Pass `"overrides": {"prep": {"enabled": true}}` to prepare before the interview.
 
 ## How it works
 
@@ -67,7 +61,7 @@ The parts that took the longest:
   time. The rules are one pure function, [`end_reason`](app/core/turns.py), pinned down by
   [`tests/test_turn_end.py`](tests/test_turn_end.py).
 - **Only the right voice counts.** The voice check takes a TitaNet voice print, so the TV, a colleague and
-  the agent's own echo are ignored.
+  the interviewer's own echo are ignored.
 - **A second or two to reply.** The LLM streams into the voice sentence by sentence (the first clause is cut
   short so audio starts early), TTS sockets stay warm, a slow edge-tts request is raced against a spare
   socket, and common openers are cached. Measured on the live demo, end of turn to first audio: 1–2.5 s with
@@ -92,13 +86,13 @@ Put your keys in `.env` (copy `.env.example`). Every `*_API_KEYS` takes a comma-
 
 | Key | For |
 |---|---|
-| `GROQ_API_KEYS` | the agents' LLM, plus Whisper for the final transcripts |
+| `GROQ_API_KEYS` | the interviewer's LLM, plus Whisper for the final transcripts |
 | `OPENROUTER_API_KEYS` | backup LLM |
 | `JEV_API_KEYS`, `SCALEDOWN_API_KEYS` | the semantic end-of-turn check and answer scoring |
 | `FISH_API_KEYS`, `ELEVENLABS_API_KEYS` | premium voices (edge-tts works without any key) |
 
-`python -m scripts.check_keys` tells you which keys work. Everything the agents do (prompts, scenarios,
-personas, timings, voices, models) lives in `config/*.yaml`, and the **Settings** page edits it.
+`python -m scripts.check_keys` tells you which keys work. Everything the interviewer does (prompts,
+preparation, scoring, timings, voices, models) lives in `config/*.yaml`, and the **Settings** page edits it.
 
 ## Develop
 
@@ -106,7 +100,7 @@ personas, timings, voices, models) lives in `config/*.yaml`, and the **Settings*
 pip install -r requirements-dev.txt
 pytest                                                    # turn-taking, API, key rotation, metrics, storage
 ruff check .
-python -m scripts.smoke_test --mode interview --api       # a synthetic person does a whole session via the API
+python -m scripts.smoke_test --api                        # a synthetic candidate does a whole interview via the API
 ```
 
 ## Deploy
@@ -117,7 +111,7 @@ serves the real app. Public mode: one session at a time, nothing saved, settings
 20 minutes, no webhooks and no session listing.
 
 ```powershell
-python -m scripts.deploy_space you/voice-agents --secrets   # needs HF_TOKEN in .env
+python -m scripts.deploy_space you/ai-interviewer --secrets   # needs HF_TOKEN in .env
 ```
 
 Anywhere that runs containers, the [`Dockerfile`](Dockerfile) does the same job. On your own server, set

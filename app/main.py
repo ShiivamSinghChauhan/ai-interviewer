@@ -23,7 +23,6 @@ from app.core.session import patience_labels
 from app.core.store import sessions
 from app.llm import decisions
 from app.llm.providers import POOLS
-from app.modes import conversation, phone
 from app.modes.interview import prep, repos
 from app.modes.interview import session as interview
 
@@ -33,10 +32,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("main")
 
 WEB = ROOT / "web"
-MODES = {"interview": interview, "conversation": conversation, "phone": phone}
-SESSIONS = {"interview": interview.InterviewSession, "conversation": conversation.ConversationSession,
-            "phone": phone.PhoneSession}
-EDITABLE = ("common", "interview", "conversation", "phone")
+MODES = {"interview": interview}
+SESSIONS = {"interview": interview.InterviewSession}
+EDITABLE = ("common", "interview")
 KEEP_JOBS = 50
 
 
@@ -75,9 +73,9 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Voice Agent Studio", version="1.0.0", lifespan=lifespan,
-              description="Real-time voice agents (interviewer, phone agent, persona agent) that run on a CPU. "
-                          "Create a session, send the person its join_url, and collect the result.")
+app = FastAPI(title="AI Interviewer", version="1.0.0", lifespan=lifespan,
+              description="A real-time voice interviewer that runs on a CPU. Create a session, send the candidate "
+                          "its join_url, and collect the scored result.")
 app.include_router(api.router)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
@@ -110,11 +108,6 @@ async def mode_options(mode: str):
     if mode not in MODES:
         raise HTTPException(404)
     return MODES[mode].options()
-
-
-@app.get("/api/conversation/surprise")
-async def surprise():
-    return conversation.surprise()
 
 
 @app.get("/api/voices/{engine}")

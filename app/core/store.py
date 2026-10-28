@@ -58,9 +58,8 @@ class SessionStore:
 
 
 def _title(record: dict) -> str:
-    """Who the session was with, or what it was about."""
-    return ((record.get("persona") or {}).get("name") or (record.get("scenario") or {}).get("title")
-            or (record.get("setup") or {}).get("role") or "")
+    """The role the interview was for."""
+    return (record.get("setup") or {}).get("role") or ""
 
 
 sessions = SessionStore(settings.sessions_dir, enabled=not settings.public_demo)

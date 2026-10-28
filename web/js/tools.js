@@ -3,13 +3,12 @@ const Tools = {
   async history() {
     show("history");
     const rows = await fetch("/api/sessions").then((r) => r.json());
-    const name = { interview: "🎯 Interviewer", conversation: "💬 Persona", phone: "📞 Phone" };
-    $("#history-table").innerHTML = "<tr><th>When</th><th>Agent</th><th>With / about</th><th>Minutes</th><th>Words per minute</th><th>Response time</th><th></th></tr>" +
+    $("#history-table").innerHTML = "<tr><th>When</th><th>Role</th><th>Minutes</th><th>Words per minute</th><th>Response time</th><th></th></tr>" +
       (rows.length ? rows.map((r) => `<tr><td>${esc(r.id.replace("_", " ").replace(/-(\d\d)-(\d\d)$/, ":$1"))}</td>
-        <td>${name[r.mode] || esc(r.mode)}</td><td>${esc(r.title)}</td><td>${r.minutes ?? "-"}</td>
+        <td>${esc(r.title)}</td><td>${r.minutes ?? "-"}</td>
         <td>${r.wpm ?? "-"}</td><td>${r.response_s !== null && r.response_s !== undefined ? r.response_s + " s" : "-"}</td>
         <td>${r.has_report ? `<button class="ghost small-btn" data-open="${esc(r.mode)}/${esc(r.id)}">Open report</button>` : ""}</td></tr>`).join("")
-        : `<tr><td colspan="7" class="muted">No sessions yet.</td></tr>`);
+        : `<tr><td colspan="6" class="muted">No sessions yet.</td></tr>`);
     $$("#history-table [data-open]").forEach((b) => (b.onclick = () => this.openReport(...b.dataset.open.split("/"))));
   },
   async openReport(mode, id) {

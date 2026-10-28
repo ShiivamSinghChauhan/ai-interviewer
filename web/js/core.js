@@ -1,14 +1,14 @@
-// Voice Agent Studio in the browser: shared state, the socket, the setup -> voice check -> session flow, the room.
+// AI Interviewer in the browser: shared state, the socket, the setup -> voice check -> session flow, the room.
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const S = {
-  meta: null, mode: null, session: null, ws: null, headphones: true, handlers: {},
+  meta: null, mode: null, session: null, ws: null, headphones: true,
   micCtx: null, micAnalyser: null, muted: false,
   playCtx: null, outAnalyser: null, outInput: null, gen: 0, chain: Promise.resolve(), nextTime: 0,
   active: new Set(), pending: 0, aiCaption: "",
   started: false, startAt: 0, duration: 15, ended: false, timer: null,
 };
-const SCREENS = ["home", "interview", "conversation", "phone", "mic", "room", "call", "report", "history", "repos", "settings"];
+const SCREENS = ["home", "interview", "mic", "room", "report", "history", "repos", "settings"];
 function show(name) { for (const s of SCREENS) $(`#screen-${s}`).classList.toggle("hidden", s !== name); window.scrollTo(0, 0); }
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const fillSelect = (sel, obj, labelFn) => {
@@ -41,8 +41,8 @@ async function boot() {
   $("#btn-again").onclick = () => location.reload();
   const joinId = new URLSearchParams(location.search).get("session");
   if (joinId) return joinSession(joinId);
-  const h = location.hash.slice(1);  // deep links: #interview #conversation #phone #repos #settings #history
-  if (["interview", "conversation", "phone"].includes(h)) openMode(h);
+  const h = location.hash.slice(1);  // deep links: #interview #repos #settings #history
+  if (h === "interview") openMode(h);
   else if (h === "repos") Tools.repos();
   else if (h === "settings") Tools.settings();
   else if (h === "history" && !S.meta.public) Tools.history();
@@ -60,7 +60,7 @@ function publicDemo() {
   $("#nav-history").classList.add("hidden");
 }
 
-const agent = (mode) => ({ interview: Interview, conversation: Conversation, phone: Phone })[mode];
+const agent = (mode) => ({ interview: Interview })[mode];
 
 async function openMode(mode) {
   S.mode = mode;
@@ -151,7 +151,6 @@ function connect(mode, setupMsg) {
         return;
       }
       const m = JSON.parse(e.data);
-      if (S.handlers[m.type] && S.handlers[m.type](m) === false) return;  // a mode's handler can swallow it
       onMessage(m);
     };
   });
@@ -198,7 +197,7 @@ function onMessage(m) {
 
 function onStarted(m) {
   S.started = true; S.startAt = performance.now(); S.duration = m.duration_min;
-  if (S.mode !== "phone") { show("room"); setState("thinking"); }
+  show("room"); setState("thinking");
   S.timer = setInterval(tick, 500);
 }
 
@@ -214,12 +213,8 @@ async function beginSetup(setupMsg, opts = {}) {
   show("mic");
   return true;
 }
-$("#btn-skip").onclick = () => { send({ type: "skip_enroll" }); afterMic(); };
-$("#btn-begin").onclick = () => afterMic();
-function afterMic() {
-  if (S.handlers.afterMic) return S.handlers.afterMic();
-  send({ type: "begin" });
-}
+$("#btn-skip").onclick = () => { send({ type: "skip_enroll" }); send({ type: "begin" }); };
+$("#btn-begin").onclick = () => send({ type: "begin" });
 
 // ---------- interview prep progress ----------
 const PREP_NAMES = { jd: "Job description", resume: "Resume vs JD", plan: "Planning unique questions", critique: "Bar-raiser review" };
@@ -246,14 +241,12 @@ function setState(s) {
   const el = $("#state");
   el.textContent = LABELS[s] || s;
   el.className = "state " + (s === "listening" ? "listening" : s === "user" ? "user" : "");
-  if (S.handlers.state) S.handlers.state(s);
 }
 function tick() {
   if (S.ended) return;
   const sec = Math.floor((performance.now() - S.startAt) / 1000);
   const t = `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
   $("#timer").textContent = `${t} / ${S.duration}:00`;
-  if (S.handlers.tick) S.handlers.tick(t);
 }
 function signal(name, value) {
   const dl = $("#signals");

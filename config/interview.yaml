@@ -67,12 +67,12 @@ whisper_hint: "Terms: LoRA, QLoRA, RAG, vLLM, embeddings, quantization, KV cache
 # Preparation: before the interview the agent studies the JD (highest priority), the candidate's resume and
 # the repositories behind your projects, then plans unique questions. Every step is optional.
 prep:
-  enabled: true
+  enabled: false                  # off by default: the interview starts right away
   show_plan_to_candidate: false   # true = see the plan before starting (less realistic)
   cache_analyses: true            # reuse JD / resume analyses when the text hasn't changed
   cache_dir: data/prep_cache
   history:                        # remember asked questions so every interview is different
-    enabled: true
+    enabled: false
     dir: data/question_history
     max_remembered: 300
   steps:
@@ -107,7 +107,7 @@ prep:
           "projects": [{{"name": "...", "what_they_claim": ["..."], "tech": ["..."], "relevance_to_jd": "high|medium|low"}}],
           "claims_to_verify": ["specific claims worth probing"], "seniority_estimate": "..."}}
     repos:
-      enabled: true               # analyse the repositories attached to projects (see `repos:` below)
+      enabled: false              # analyse the repositories attached to projects (see `repos:` below)
     outline:                      # stage 1: strategy - sections, time, what to probe in each
       enabled: true
       chain: [groq:openai/gpt-oss-120b|reasoning_effort=medium, openrouter:google/gemma-4-31b-it:free, groq:openai/gpt-oss-20b|reasoning_effort=medium]
@@ -161,7 +161,7 @@ prep:
         Return ONLY JSON:
         {{"questions": [{{"q": "...", "why": "...", "follow_ups": ["...", "..."], "strong_answer": ["...", "...", "..."]}}]}}
     critique:
-      enabled: true
+      enabled: false
       chain: [groq:openai/gpt-oss-20b|reasoning_effort=medium, openrouter:google/gemma-4-31b-it:free, groq:qwen/qwen3.8-27b]
       temperature: 0.4
       max_tokens: 3000
@@ -180,7 +180,7 @@ prep:
 
 # Repository analysis (cached per repo + commit in data/repo_reports; re-used across interviews)
 repos:
-  reuse_cached: true
+  reuse_cached: false
   reuse_if_newer_commit: true   # reuse an existing report even if the repo has new commits
   max_age_days: 120             # older reports are re-analysed
   workdir: data/repos

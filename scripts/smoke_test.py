@@ -1,8 +1,8 @@
 """A synthetic person talks to the running server, pauses and restarts included, so you don't have to.
 
-    python -m app.main                                         # terminal 1
-    python -m scripts.smoke_test --mode phone --report         # terminal 2
-    python -m scripts.smoke_test --mode interview --api        # the same, through a session made with the API
+    python -m app.main                         # terminal 1
+    python -m scripts.smoke_test --report      # terminal 2
+    python -m scripts.smoke_test --api         # the same, through a session made with the API
 
 The voice comes from edge-tts and is streamed in real time as 16 kHz PCM. The script prints what the
 server heard, why it decided the turn was over, and how long the reply took.
@@ -25,38 +25,19 @@ VOICE = "en-IN-NeerjaNeural"
 MIC_CHECK = ("Hello, my name is Sahil. I like talking about my work, my hobbies, and the places I have visited. "
              "I'm ready to start whenever you are.")
 # restarts, and "||" is a 1.8 s silence in the middle of an answer
-ANSWERS = {
-    "conversation": [
-        "I I think the most important thing in life is... || to have people who understand you.",
-        "When I was in college, I I wanted to become a, a teacher, but || my father wanted me to do engineering.",
-        "Honestly, I am still not sure. Maybe || happiness is just being at peace with yourself.",
-    ],
-    "interview": [
-        "Sure. I am a machine learning engineer with two years of experience. || "
-        "Recently I built a RAG chatbot over insurance documents.",
-        "We used QLoRA with four bit quantization so the fine-tune fit on a single GPU. "
-        "The rank was sixteen and we evaluated with an LLM as a judge.",
-        "For serving we used vLLM because paged attention and continuous batching gave much better throughput.",
-    ],
-    "phone": [
-        "Hello? Yes, this is Sahil speaking. || Who is this?",
-        "Okay. My flat is B 304, Green Park Society. || The gate is opposite the petrol pump.",
-        "Yes, use the second gate. || The guard will let you in. Thank you, bye.",
-    ],
-}
-SETUPS = {
-    "conversation": {"setup": {"name": "Kabir", "age": 24, "gender": "male", "accent": "Indian",
-                               "occupation": "philosophy student", "mode": "deep", "scene": "cafe",
-                               "patience": "very_patient", "duration_min": 10,
-                               "traits": {"warmth": 5, "humor": 4, "energy": 4, "curiosity": 4}}},
-    "interview": {"setup": {"candidate_name": "Sahil", "duration_min": 10, "style": "neutral",
-                            "resume": "ML engineer, 2 years. RAG chatbot over insurance PDFs (LangChain, Qdrant). "
-                                      "QLoRA fine-tune of Llama 3 8B.",
-                            "jd": "AI Engineer at a fintech: RAG over financial documents, LoRA fine-tuning, "
-                                  "vLLM serving, evaluation."},
-                  "repos": [], "overrides": {"prep": {"steps": {"critique": {"enabled": False}}}}},
-    "phone": {"setup": {"scenario": "delivery_address", "difficulty": "medium", "duration_min": 5}},
-}
+ANSWERS = [
+    "Sure. I am a machine learning engineer with two years of experience. || "
+    "Recently I built a RAG chatbot over insurance documents.",
+    "We used QLoRA with four bit quantization so the fine-tune fit on a single GPU. "
+    "The rank was sixteen and we evaluated with an LLM as a judge.",
+    "For serving we used vLLM because paged attention and continuous batching gave much better throughput.",
+]
+SETUP = {"setup": {"candidate_name": "Sahil", "duration_min": 10, "style": "neutral",
+                   "resume": "ML engineer, 2 years. RAG chatbot over insurance PDFs (LangChain, Qdrant). "
+                             "QLoRA fine-tune of Llama 3 8B.",
+                   "jd": "AI Engineer at a fintech: RAG over financial documents, LoRA fine-tuning, "
+                         "vLLM serving, evaluation."},
+         "repos": [], "overrides": {"prep": {"steps": {"critique": {"enabled": False}}}}}
 
 
 async def tts_pcm(text: str, pause: float = 0.45) -> np.ndarray:
@@ -155,7 +136,6 @@ class Candidate:
 
 async def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", default="conversation", choices=["conversation", "interview", "phone"])
     ap.add_argument("--url", default="ws://127.0.0.1:8000/ws/")
     ap.add_argument("--answers", type=int, default=3)
     ap.add_argument("--no-enroll", action="store_true")
@@ -163,22 +143,22 @@ async def main():
     ap.add_argument("--patience", default="very_patient", choices=["very_patient", "patient", "normal"])
     ap.add_argument("--report", action="store_true", help="end the interview and print the report")
     ap.add_argument("--api", action="store_true", help="create the session with POST /api/v1/sessions first")
-    ap.add_argument("--style", help="interview style (friendly/neutral/tough) or phone difficulty (easy/medium/hard)")
+    ap.add_argument("--style", help="interview style: friendly, neutral or tough")
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # reports contain non-ASCII punctuation
 
     print("synthesizing candidate speech...")
     mic = await tts_pcm(MIC_CHECK)
-    answers = [await tts_pcm(a) for a in ANSWERS[args.mode][:args.answers]]
+    answers = [await tts_pcm(a) for a in ANSWERS[:args.answers]]
 
-    setup = json.loads(json.dumps(SETUPS[args.mode]))
+    setup = json.loads(json.dumps(SETUP))
     setup["setup"].update({"tts_engine": args.tts, "patience": args.patience})
     if args.style:
-        setup["setup"]["difficulty" if args.mode == "phone" else "style"] = args.style
-    url, session = args.url + args.mode, None
+        setup["setup"]["style"] = args.style
+    url, session = args.url + "interview", None
     if args.api:  # the way an integration would do it: create the session, then join it
         api = re.sub(r"^ws", "http", args.url).removesuffix("/ws/") + "/api/v1/sessions"
-        session = httpx.post(api, json={"agent": args.mode, **setup}, timeout=30).raise_for_status().json()
+        session = httpx.post(api, json={"agent": "interview", **setup}, timeout=30).raise_for_status().json()
         print(f"[api] created {session['id']}: {session['join_url']}")
         url += f"?session={session['id']}"
         args.report = True
@@ -187,9 +167,7 @@ async def main():
         c = Candidate(ws)
         reader = asyncio.create_task(c.reader())
         await ws.send(json.dumps({"type": "setup", **setup}))
-        ready = await c.wait_for("ready", 120)
-        if args.mode == "phone":
-            print("[call]", json.dumps(ready.get("call"))[:300])
+        await c.wait_for("ready", 120)
         if args.no_enroll:
             await ws.send(json.dumps({"type": "skip_enroll"}))
         else:

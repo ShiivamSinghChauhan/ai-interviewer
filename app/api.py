@@ -1,4 +1,4 @@
-"""The REST API: set up a voice-agent session for someone, send them the link, collect the result.
+"""The REST API: set up an interview for someone, send them the link, collect the result.
 
     POST   /api/v1/sessions        {"agent": "interview", "setup": {...}, "webhook_url": "https://..."}
                                    -> {"id": "...", "join_url": "...", "status": "created", ...}
@@ -43,7 +43,7 @@ class Repo(BaseModel):
 
 
 class SessionCreate(BaseModel):
-    agent: Literal["interview", "conversation", "phone"]
+    agent: Literal["interview"] = "interview"
     setup: dict = Field(default_factory=dict, description="The agent's setup fields, the same as on its setup "
                         "screen. GET /api/{agent}/options lists the choices and the defaults.")
     repos: list[Repo] = Field(default_factory=list, description="Interview only: repositories to read first")

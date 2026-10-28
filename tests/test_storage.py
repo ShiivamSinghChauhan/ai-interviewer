@@ -18,23 +18,23 @@ def test_deep_merge_overrides_without_touching_the_base():
 
 def test_sessions_round_trip_newest_first(tmp_path):
     store = SessionStore(tmp_path)
-    for mode, stamp in (("phone", "2026-01-01_10-00-00"), ("interview", "2026-02-01_10-00-00")):
-        folder = tmp_path / mode / stamp
+    for stamp in ("2026-01-01_10-00-00", "2026-02-01_10-00-00"):
+        folder = tmp_path / "interview" / stamp
         folder.mkdir(parents=True)
-        (folder / "session.json").write_text(json.dumps({"mode": mode, "report_markdown": "ok"}))
-    assert [row["mode"] for row in store.list()] == ["interview", "phone"]
-    assert store.get("phone", "2026-01-01_10-00-00")["markdown"] == "ok"
+        (folder / "session.json").write_text(json.dumps({"mode": "interview", "report_markdown": "ok"}))
+    assert [row["id"] for row in store.list()] == ["2026-02-01_10-00-00", "2026-01-01_10-00-00"]
+    assert store.get("interview", "2026-01-01_10-00-00")["markdown"] == "ok"
 
 
 def test_saving_writes_the_audio(tmp_path):
-    folder = SessionStore(tmp_path).save("phone", {"mode": "phone"}, [np.zeros(1600, dtype=np.float32)], "# hi")
-    assert (tmp_path / "phone").exists() and folder
-    assert len(list((tmp_path / "phone").glob("*/audio/U1.wav"))) == 1
+    folder = SessionStore(tmp_path).save("interview", {"mode": "interview"}, [np.zeros(1600, dtype=np.float32)], "# hi")
+    assert (tmp_path / "interview").exists() and folder
+    assert len(list((tmp_path / "interview").glob("*/audio/U1.wav"))) == 1
 
 
 def test_a_disabled_store_keeps_nothing(tmp_path):
     store = SessionStore(tmp_path, enabled=False)
-    assert store.save("phone", {"mode": "phone"}, [np.zeros(1600, dtype=np.float32)]) == ""
+    assert store.save("interview", {"mode": "interview"}, [np.zeros(1600, dtype=np.float32)]) == ""
     assert not any(tmp_path.iterdir())
     assert store.list() == []
 

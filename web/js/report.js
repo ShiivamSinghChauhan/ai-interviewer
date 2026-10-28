@@ -7,7 +7,7 @@ const Report = {
       $("#report").innerHTML = "<p>Thank you! The session has been submitted. You can close this tab.</p>";
       return;
     }
-    $("#report-title").textContent = { interview: "Interview report", conversation: "Conversation summary", phone: "Call summary" }[S.mode] || "Report";
+    $("#report-title").textContent = "Interview report";
     $("#report").innerHTML = markdown(m.markdown || "");
     const d = m.delivery || {};
     const turns = d.per_turn || [];
