@@ -91,6 +91,8 @@ body.joined .topbar .row, body.joined #screen-home .mode-cards, body.joined #btn
 
 /* mic check + interview prep */
 blockquote { margin: 14px 0; padding: 14px 16px; background: var(--panel-2); border-left: 3px solid var(--accent); border-radius: 8px; font-size: 17px; line-height: 1.5; }
+.mic-pick { margin-top: 14px; }
+.warn { color: var(--warn); font-size: 14px; margin: -6px 0 12px; }
 .meter { height: 6px; background: var(--panel-2); border-radius: 4px; overflow: hidden; margin: 10px 0 16px; }
 .meter div, .self-meter div { height: 100%; width: 0; background: var(--accent-2); transition: width 60ms linear; }
 .transcript-box { min-height: 64px; padding: 12px; border: 1px dashed var(--line); border-radius: 10px; line-height: 1.5; }

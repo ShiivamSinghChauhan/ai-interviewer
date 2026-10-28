@@ -191,6 +191,7 @@ class AudioWorker(threading.Thread):
         self.last_question = ""
         self.enroll_mode = False
         self.enrolled: np.ndarray | None = None
+        self.received_s, self.peak = 0.0, 0.0  # how much mic audio arrived, and how loud it got (for the log)
 
     def emit(self, kind: str, **data) -> None:
         self.loop.call_soon_threadsafe(self._emit, {"kind": kind, **data})
@@ -215,6 +216,8 @@ class AudioWorker(threading.Thread):
                 self.preroll.clear()
                 continue
             samples = np.frombuffer(item, dtype=np.int16).astype(np.float32) / 32768.0
+            self.received_s += len(samples) / SR
+            self.peak = max(self.peak, float(np.abs(samples).max(initial=0.0)))
             buf = np.concatenate([self.leftover, samples])
             n = len(buf) // FRAME
             for i in range(n):

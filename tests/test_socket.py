@@ -25,8 +25,10 @@ def test_audio_is_still_read_while_begin_waits_for_the_prep():
 
         session = BaseSession.__new__(BaseSession)
         session.ws, session.events = SimpleNamespace(receive=receive), asyncio.Queue()
-        session.worker = SimpleNamespace(start=lambda: None, stop=lambda: None, push=heard.append)
-        session.response_task, session.started_at, session.ended = None, None, False
+        session.worker = SimpleNamespace(start=lambda: None, stop=lambda: None, push=heard.append,
+                                         received_s=0.0, peak=0.0)
+        session.response_task, session.started_at, session.ended, session.turns = None, None, False, []
+        session.opened_at = 0.0
         session._begin, session._tick = begin, lambda: asyncio.sleep(3600)
         await asyncio.wait_for(session.run(), 2)
         return heard, began

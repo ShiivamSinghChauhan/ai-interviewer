@@ -1,10 +1,15 @@
 // Audio in and out: mic capture, clip playback, the phone-line effect and ring tones.
 
+function openMic(deviceId) {
+  const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 };
+  if (deviceId) audio.deviceId = { exact: deviceId };
+  return navigator.mediaDevices.getUserMedia({ audio });
+}
+
 async function startAudio() {
   if (S.micCtx) return;
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
-  });
+  const saved = store.get("mic", "");  // each site starts on the system default mic, which may be the wrong one
+  const stream = await (saved ? openMic(saved).catch(() => openMic()) : openMic());
   let ctx, src;
   try { ctx = new AudioContext({ sampleRate: 16000 }); src = ctx.createMediaStreamSource(stream); }
   catch { if (ctx) ctx.close(); ctx = new AudioContext(); src = ctx.createMediaStreamSource(stream); }
@@ -14,7 +19,8 @@ async function startAudio() {
   const sink = ctx.createGain(); sink.gain.value = 0;
   src.connect(node).connect(sink).connect(ctx.destination);
   S.micAnalyser = ctx.createAnalyser(); src.connect(S.micAnalyser);
-  S.micCtx = ctx;
+  Object.assign(S, { micCtx: ctx, micNode: node, micSrc: src, micStream: stream, heardAt: performance.now() });
+  listMics();
 
   S.playCtx = new AudioContext();
   S.outAnalyser = S.playCtx.createAnalyser();
@@ -25,6 +31,33 @@ async function startAudio() {
   S.outAnalyser.connect(out);
   S.outInput = S.outAnalyser;
   requestAnimationFrame(meters);
+}
+
+// The voice check's microphone picker. Names are only readable once the mic is allowed.
+async function listMics() {
+  const mics = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
+  const current = S.micStream.getAudioTracks()[0].getSettings().deviceId;
+  $("#mic-device").innerHTML = mics.map((d, i) =>
+    `<option value="${esc(d.deviceId)}" ${d.deviceId === current ? "selected" : ""}>${esc(d.label || `Microphone ${i + 1}`)}</option>`).join("");
+}
+
+async function switchMic(deviceId) {
+  const stream = await openMic(deviceId);
+  S.micStream.getTracks().forEach((t) => t.stop());
+  S.micSrc.disconnect();
+  S.micSrc = S.micCtx.createMediaStreamSource(stream);
+  S.micSrc.connect(S.micNode); S.micSrc.connect(S.micAnalyser);
+  S.micStream = stream; S.heardAt = performance.now();
+  store.set("mic", deviceId);
+  sendMicInfo();
+}
+$("#mic-device").onchange = (e) => switchMic(e.target.value).catch((err) => alert("Couldn't open that microphone: " + err.message));
+
+// lands in the server log, so a silent mic can be told apart from a recognizer that doesn't recognize
+function sendMicInfo() {
+  const track = S.micStream.getAudioTracks()[0], set = track.getSettings();
+  send({ type: "mic", label: track.label, muted: track.muted, track_rate: set.sampleRate || null,
+         rate: S.micCtx.sampleRate, state: S.micCtx.state });
 }
 
 // Chrome's echo canceller only sees WebRTC audio, so playback goes through a local loopback connection.
@@ -100,6 +133,8 @@ function rms(analyser) {
 
 function meters() {
   const mic = S.muted ? 0 : Math.min(100, rms(S.micAnalyser) * 600);
+  if (mic > 3) S.heardAt = performance.now();
+  $("#mic-silent").classList.toggle("hidden", performance.now() - S.heardAt < 6000);
   $("#mic-level").style.width = mic + "%";
   $("#self-level").style.width = mic + "%";
   const out = Math.min(1, rms(S.outAnalyser) * 8);

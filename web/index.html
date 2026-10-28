@@ -175,7 +175,9 @@
       <h1>Voice check</h1>
       <p>Read this aloud at your own pace. The agent learns your voice, so other voices and its own echo are ignored.</p>
       <blockquote id="mic-sentence">Hello, my name is ___. I like talking about my work, my hobbies, and the places I have visited. I'm ready to start whenever you are.</blockquote>
+      <label class="mic-pick">Microphone<select id="mic-device"></select></label>
       <div class="meter"><div id="mic-level"></div></div>
+      <p id="mic-silent" class="warn hidden">No sound from this microphone. Pick another one above, or check that it isn't muted.</p>
       <div id="mic-transcript" class="transcript-box muted">Waiting for you to speak…</div>
       <p id="mic-status" class="muted"></p>
       <div class="actions"><button id="btn-skip" class="ghost">Skip</button><button id="btn-begin" class="primary" disabled>Start</button></div>
