@@ -36,6 +36,7 @@ class Voice:
     engine: str = "edge"  # one of ENGINES
     id: str = ""          # engine-specific voice id; empty means the engine's default
     speed: float = 1.0
+    fallback: str = ""    # the edge voice that stands in when Fish or ElevenLabs fails
 
 
 def _lowered(items) -> set[str]:
@@ -333,6 +334,11 @@ class TTS:
         self._kokoro: Kokoro | None = None
         self._kokoro_lock = asyncio.Lock()
 
+    def ready(self, engine: str) -> bool:
+        """Whether an engine can speak here at all: its keys are set, or its model is downloaded."""
+        return {"edge": True, "fish": self.fish.available, "elevenlabs": self.eleven.available,
+                "kokoro": self.kokoro_available}.get(engine, False)
+
     async def kokoro(self) -> Kokoro | None:
         """Loaded on first use only: it's slow on a laptop CPU and mostly an emergency fallback."""
         async with self._kokoro_lock:
@@ -384,7 +390,7 @@ class TTS:
                     log.warning("%s failed (%s); using edge-tts for %ds", voice.engine,
                                 str(e)[:120] or type(e).__name__, self.PREMIUM_BENCH_S)
                     self.down_until[voice.engine] = time.monotonic() + self.PREMIUM_BENCH_S
-            voice = replace(voice, engine="edge", id=settings.edge_voice)
+            voice = replace(voice, engine="edge", id=voice.fallback or settings.edge_voice)
 
         text = cues.plain(text)  # plain voices would read "[sigh]" out loud
         if not text:

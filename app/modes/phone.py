@@ -52,14 +52,12 @@ class PhoneSession(BaseSession):
         accents = self.common["accents"]
         accent = self.call.get("caller_accent") if self.call.get("caller_accent") in accents else "Indian"
         gender = "female" if str(self.call.get("caller_gender", "")).lower().startswith("f") else "male"
-        engine = prefs.get("tts_engine", "edge")
         try:
             age = int(self.call.get("age") or 0) or None
         except (TypeError, ValueError):
             age = None
         speed = self.difficulty.get("speed", 1.0) * float(prefs.get("speed") or 1.0)
-        await self.set_voice(engine, prefs.get("voice") or (accents[accent][gender] if engine == "edge" else ""),
-                             speed, accent, gender, age)
+        await self.set_voice(prefs.get("tts_engine", "edge"), prefs.get("voice", ""), speed, accent, gender, age)
         self.apply_turn_config(prefs.get("patience") or self.difficulty.get("patience", "patient"),
                                bool(prefs.get("manual_turns")))
         line = prefs.get("line") or self.difficulty.get("line", "mobile")

@@ -17,7 +17,7 @@ from fastapi import WebSocket
 
 from app.api import AgentSession, book
 from app.audio import cues
-from app.audio.tts import ENGINES, Voice
+from app.audio.tts import Voice
 from app.config import load, settings
 from app.core import analysis
 from app.core.reply import SentenceChunker, parse_meta
@@ -172,15 +172,19 @@ class BaseSession:
 
     async def set_voice(self, engine: str, voice: str, speed: float, accent: str = "", gender: str = "",
                         age: int | None = None) -> None:
-        """An empty voice means "Auto": edge and Kokoro use their default; Fish picks a library voice that fits."""
-        engine = engine if engine in ENGINES else settings.tts_engine
-        voice = voice or {"edge": settings.edge_voice, "kokoro": settings.kokoro_voice}.get(engine, "")
+        """An empty voice means "Auto": edge picks the voice for the accent and gender, Fish searches its library
+        for one. An engine that can't speak here (no key, no model) is swapped for edge-tts, which needs neither."""
+        if not self.models.tts.ready(engine):
+            engine, voice = "edge", ""
+        edge_voice = (self.common["accents"].get(accent) or {}).get(gender) or settings.edge_voice
+        if not voice:
+            voice = {"edge": edge_voice, "kokoro": settings.kokoro_voice}.get(engine, "")
         if engine == "fish" and not voice and accent:
             try:
                 voice = await self.models.tts.fish.find_voice(accent, gender, age)
             except Exception as e:
                 log.warning("Fish voice match failed, using the default voice: %s", e)
-        self.voice = Voice(engine, voice, max(0.7, min(1.3, float(speed or 1.0))))
+        self.voice = Voice(engine, voice, max(0.7, min(1.3, float(speed or 1.0))), fallback=edge_voice)
 
     @staticmethod
     def capped(minutes: float) -> float:

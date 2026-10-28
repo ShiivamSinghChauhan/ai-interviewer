@@ -17,7 +17,7 @@ defaults:
   interviewer_gender: male      # used to auto-pick a Fish Audio voice
   interviewer_accent: Indian
   focus: [fundamentals, llm, rag, finetuning, inference, system_design, behavioral]
-  tts_engine: edge
+  tts_engine: fish     # edge | fish | elevenlabs | kokoro; falls back to edge when Fish is down
   voice: ""
   speed: 1.0
   patience: patient

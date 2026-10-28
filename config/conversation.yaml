@@ -32,7 +32,7 @@ defaults:
   keep_me_talking: true
   duration_min: 15
   user_name: ''
-  tts_engine: edge
+  tts_engine: fish     # edge | fish | elevenlabs | kokoro; falls back to edge when Fish is down
   voice: ''
 
 # what the setup screen shows; the prompt text for each key is further down
