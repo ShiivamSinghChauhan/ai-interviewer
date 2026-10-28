@@ -131,10 +131,17 @@ function rms(analyser) {
   return Math.sqrt(s / buf.length);
 }
 
+const MUTED_HINT = "Your microphone is muted on this computer. Press the laptop's mic-mute key, or unmute it in the "
+  + "system's sound settings (Windows: Settings > System > Sound > Input).";
+const SILENT_HINT = "No sound from this microphone. Pick another one above, or check that it isn't muted.";
+
 function meters() {
   const mic = S.muted ? 0 : Math.min(100, rms(S.micAnalyser) * 600);
   if (mic > 3) S.heardAt = performance.now();
-  $("#mic-silent").classList.toggle("hidden", performance.now() - S.heardAt < 6000);
+  const muted = S.micStream.getAudioTracks()[0].muted, hint = $("#mic-silent");  // muted: the system sends no audio
+  const text = muted ? MUTED_HINT : SILENT_HINT;
+  if (hint.textContent !== text) hint.textContent = text;
+  hint.classList.toggle("hidden", !muted && performance.now() - S.heardAt < 6000);
   $("#mic-level").style.width = mic + "%";
   $("#self-level").style.width = mic + "%";
   const out = Math.min(1, rms(S.outAnalyser) * 8);
