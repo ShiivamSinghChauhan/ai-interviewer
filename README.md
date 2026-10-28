@@ -40,9 +40,9 @@ The parts that took the longest:
   [`tests/test_turn_end.py`](tests/test_turn_end.py).
 - **Ignoring the TV.** The mic check takes a voice print (TitaNet). Other voices, and the partner's own echo,
   don't count as you.
-- **About a second to reply, on free tiers.** The first sentence is cut short so the voice starts early, TTS
+- **A second or two to reply, on free tiers.** The first sentence is cut short so the voice starts early, TTS
   sockets stay warm, a slow edge-tts request gets raced against a spare socket, and a model that hasn't said
-  anything in 6 seconds gets skipped.
+  anything in 6 seconds gets skipped. Fish, the default voice, sounds the most human; edge-tts is the fastest.
 - **₹0, more or less forever.** Every provider takes several keys. A rate limit benches that key for that model
   only, and the next key takes over ([`app/llm/keypool.py`](app/llm/keypool.py)).
 - **Doing the homework.** Before the first question the interviewer reads the JD, the resume and the code in
