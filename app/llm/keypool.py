@@ -52,7 +52,7 @@ class KeyPool:
         self.current = self.keys.index(key)
 
     def fail(self, key: Key, status: int, body: str = "", headers=None, model: str | None = None) -> None:
-        text = body.lower()
+        text = body.lower().replace("-", " ")  # OpenRouter says "free-models-per-day"
         per_model = model is not None
         if status in (401, 403):
             wait, per_model = 24 * 3600, False
