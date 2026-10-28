@@ -2,10 +2,6 @@
 
 **[Try it live](https://shiivamchauhan-practice-studio.hf.space)** (free hosting, so give it two minutes if it was asleep)
 
-Voice practice for the three things I'd rather avoid: **job interviews**, **phone calls** and **small talk
-with strangers**. I also stammer. Most voice AIs take a two-second block as their cue to interrupt. This one
-waits.
-
 It runs on a laptop CPU and costs ₹0. Speech recognition is local, and the LLMs and voices use free tiers,
 switching to the next key whenever one runs dry.
 
@@ -17,8 +13,8 @@ switching to the next key whenever one runs dry.
   someone and get a thing done. Phone-line audio included, awkward silences optional.
 - **💬 Conversation:** chat with a stranger whose accent, age, job and personality you design.
 
-Every session ends with feedback plus a speech report: how much you stammered, how nervous you sounded, and
-whether you settled down. These are estimates for practice, not a diagnosis.
+Every session ends with a detailed feedback plus a speech report: how nervous you sounded, and
+whether you settled down.
 
 ## How it works
 
@@ -31,22 +27,6 @@ flowchart LR
   llm -- "sentence by sentence" --> tts["edge-tts / Fish / ElevenLabs"]
   tts -- "audio clips" --> mic
 ```
-
-The parts that took the longest:
-
-- **Not interrupting a stammer.** A pause isn't the end of a turn, so three signals vote: silence, Smart Turn
-  (does it *sound* finished?) and Jev (is the *thought* finished?). A trailing "and..." or a "let me think"
-  buys extra time. The rules live in [`app/core/turns.py`](app/core/turns.py) and are pinned down by
-  [`tests/test_turn_end.py`](tests/test_turn_end.py).
-- **Ignoring the TV.** The mic check takes a voice print (TitaNet). Other voices, and the partner's own echo,
-  don't count as you.
-- **A second or two to reply, on free tiers.** The first sentence is cut short so the voice starts early, TTS
-  sockets stay warm, a slow edge-tts request gets raced against a spare socket, and a model that hasn't said
-  anything in 6 seconds gets skipped. Fish, the default voice, sounds the most human; edge-tts is the fastest.
-- **₹0, more or less forever.** Every provider takes several keys. A rate limit benches that key for that model
-  only, and the next key takes over ([`app/llm/keypool.py`](app/llm/keypool.py)).
-- **Doing the homework.** Before the first question the interviewer reads the JD, the resume and the code in
-  your repos (cached per commit), then plans questions it hasn't asked you before.
 
 ## Run it
 
@@ -79,15 +59,4 @@ ruff check .
 python -m scripts.smoke_test --mode phone --report    # a fake user with a fake stammer calls the running app
 ```
 
-## Deploy
 
-The live demo is a free Hugging Face Space. Free accounts only get Gradio on ZeroGPU these days, so
-[`space.py`](space.py) wears a Gradio costume: it registers a GPU function that never runs (ZeroGPU won't boot
-without one), then hands the port to the real app. It runs in public mode: one visitor at a time, nothing
-saved, settings read-only, sessions capped at 20 minutes.
-
-```powershell
-python -m scripts.deploy_space you/practice-studio --secrets   # needs HF_TOKEN in .env
-```
-
-Anywhere that runs containers, the [`Dockerfile`](Dockerfile) does the same job without the costume.
