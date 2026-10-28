@@ -1,6 +1,6 @@
 # Voice Agent Studio
 
-**[Live demo](https://shiivamchauhan-practice-studio.hf.space)** · **[API docs](https://shiivamchauhan-practice-studio.hf.space/docs)**
+**[Live demo](https://shiivamchauhan-voice-agent.hf.space)** · **[API docs](https://shiivamchauhan-voice-agent.hf.space/docs)**
 (free hosting: give it two minutes if it was asleep)
 
 Real-time voice agents that listen properly. Each one waits until the person has actually finished (a pause to
@@ -23,7 +23,7 @@ Try any of them in the browser, or create sessions from your own product through
 ## The API
 
 ```bash
-curl -X POST https://shiivamchauhan-practice-studio.hf.space/api/v1/sessions \
+curl -X POST https://shiivamchauhan-voice-agent.hf.space/api/v1/sessions \
   -H "Content-Type: application/json" \
   -d '{"agent": "interview",
        "setup": {"candidate_name": "Priya", "role": "Backend Engineer", "duration_min": 10,

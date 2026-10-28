@@ -1,6 +1,6 @@
 """Create a session through the API, hand out the link, wait for the result.
 
-    python examples/api_client.py --url https://shiivamchauhan-practice-studio.hf.space
+    python examples/api_client.py --url https://shiivamchauhan-voice-agent.hf.space
     python examples/api_client.py --url http://127.0.0.1:8000 --token <one of API_TOKENS> --agent phone
 
 Open the printed join_url in Chrome or Edge, talk to the agent, and the script prints every answer with its

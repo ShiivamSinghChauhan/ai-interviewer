@@ -1,5 +1,5 @@
 [project]
-name = "practice-studio"
+name = "voice-agent"
 version = "1.0.0"
 description = "Voice practice for interviews, phone calls and small talk, built to be patient with stammering."
 requires-python = ">=3.12"

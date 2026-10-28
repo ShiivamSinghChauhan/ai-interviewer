@@ -1,6 +1,6 @@
 # For hosts that run containers (Render, Fly, a VPS, a paid Hugging Face Docker Space). The free Hugging Face
 # tier runs space.py instead.
-#   docker build -t practice-studio . && docker run -p 7860:7860 --env-file .env practice-studio
+#   docker build -t voice-agent . && docker run -p 7860:7860 --env-file .env voice-agent
 FROM python:3.13-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
