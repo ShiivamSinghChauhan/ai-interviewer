@@ -4,7 +4,7 @@
 (free hosting: give it two minutes if it was asleep)
 
 Real-time voice agents that listen properly. Each one waits until the person has actually finished (a pause to
-think is not the end of a turn), answers in about a second, and hands back a structured result: every answer
+think is not the end of a turn), answers in a second or two, and hands back a structured result: every answer
 with its transcript, timing and scores, delivery metrics, and a written report.
 
 It runs on a CPU. Speech recognition is local; the LLMs and voices use hosted APIs with automatic failover.
@@ -68,9 +68,10 @@ The parts that took the longest:
   [`tests/test_turn_end.py`](tests/test_turn_end.py).
 - **Only the right voice counts.** The voice check takes a TitaNet voice print, so the TV, a colleague and
   the agent's own echo are ignored.
-- **About a second to reply.** The LLM streams into the voice sentence by sentence (the first clause is cut
+- **A second or two to reply.** The LLM streams into the voice sentence by sentence (the first clause is cut
   short so audio starts early), TTS sockets stay warm, a slow edge-tts request is raced against a spare
-  socket, and common openers are cached. Measured on the live demo: 0.8–1.2 s from end of turn to first audio.
+  socket, and common openers are cached. Measured on the live demo, end of turn to first audio: 1–2.5 s with
+  Fish (the default voice, the most human-sounding), 0.8–1.2 s with edge-tts.
 - **It keeps working when a provider doesn't.** Every provider takes several keys; a rate limit benches that
   key for that model only ([`keypool.py`](app/llm/keypool.py)). A model that hasn't started answering in 6 s
   is skipped, a premium voice slower than 6 s falls back to edge-tts, and edge-tts falls back to Kokoro offline.
