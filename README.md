@@ -1,6 +1,6 @@
 # Practice Studio
 
-**[Try it live](https://shiivamchauhan-practice-studio.hf.space)** (free hosting, so give it two minutes if it was asleep)
+**[Try it live](https://shiivamchauhan-voice-agent.hf.space)** (free hosting, so give it two minutes if it was asleep)
 
 It runs on a laptop CPU and costs ₹0. Speech recognition is local, and the LLMs and voices use free tiers,
 switching to the next key whenever one runs dry.
