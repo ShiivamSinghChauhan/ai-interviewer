@@ -51,11 +51,9 @@ class ConversationSession(BaseSession):
         self.persona = persona
         self.use_llm(cfg, 0.85, 350)
 
-        engine = persona.get("tts_engine", "edge")
         gender = "male" if persona["gender"] == "male" else "female"
-        voice = persona.get("voice") or (accents[persona["accent"]][gender] if engine == "edge" else "")
-        await self.set_voice(engine, voice, persona.get("speed", 1.0), persona["accent"], persona["gender"],
-                             int(persona.get("age") or 0) or None)
+        await self.set_voice(persona.get("tts_engine", "edge"), persona.get("voice", ""), persona.get("speed", 1.0),
+                             persona["accent"], gender, int(persona.get("age") or 0) or None)
         self.apply_turn_config(persona.get("patience", "very_patient"), bool(persona.get("manual_turns")))
         await self.send({"type": "ready", "persona": persona})
 

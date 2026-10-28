@@ -16,7 +16,7 @@ defaults:
   user_name: ""        # your name, if the caller should know it
   patience: patient
   manual_turns: false
-  tts_engine: edge
+  tts_engine: fish     # edge | fish | elevenlabs | kokoro; falls back to edge when Fish is down
   voice: ""            # empty = picked from the caller's accent + gender
   duration_min: 8
   ring_delay_s: [2, 8]          # random wait before the phone rings after you say you're ready

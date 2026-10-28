@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.audio.models import SmartTurn, SpeakerGate, StreamingSTT
-from app.audio.tts import TTS
+from app.audio.tts import ENGINES, TTS
 from app.config import CONFIG_DIR, MODELS_DIR, ROOT, load, settings
 from app.core.session import patience_labels
 from app.core.store import sessions
@@ -96,8 +96,7 @@ async def meta():
     tts = models.tts
     return {"providers": {name: len(pool.keys) for name, pool in POOLS.items()},
             "decisions": decisions.available(), "speaker_gate": models.speaker is not None,
-            "engines": {"edge": True, "fish": tts.fish.available, "elevenlabs": tts.eleven.available,
-                        "kokoro": tts.kokoro_available},
+            "engines": {engine: tts.ready(engine) for engine in ENGINES},
             "default_engine": settings.tts_engine, "patience": patience_labels(),
             "public": settings.public_demo, "max_session_min": settings.max_session_min, "busy": live_slot.locked()}
 
