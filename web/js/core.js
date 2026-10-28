@@ -201,7 +201,7 @@ function afterMic() {
 // ---------- interview prep progress ----------
 const PREP_NAMES = { jd: "Job description", resume: "Resume vs JD", plan: "Planning unique questions", critique: "Bar-raiser review" };
 function prepStep(m) {
-  const id = "prep-" + m.step.replace(/[^a-z0-9]/gi, "_");
+  const id = "prep-step-" + m.step.replace(/[^a-z0-9]/gi, "_");  // "prep-plan" is taken by the plan box
   let li = document.getElementById(id);
   if (!li) {
     const name = PREP_NAMES[m.step] || (m.step.startsWith("repo:") ? "Repo: " + m.step.slice(5) : m.step);
