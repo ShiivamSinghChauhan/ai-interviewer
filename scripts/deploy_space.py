@@ -1,7 +1,7 @@
 """Publish the app as a Hugging Face Space (Gradio SDK on free ZeroGPU hardware, started by space.py).
 
     pip install -r requirements-dev.txt
-    python -m scripts.deploy_space you/voice-agent --secrets
+    python -m scripts.deploy_space you/ai-interviewer --secrets
 
 Needs HF_TOKEN, a write token from huggingface.co/settings/tokens, in .env or the environment. --secrets copies
 the *_API_KEYS from .env into the Space's secrets, which only the running app can read. Every run mirrors the
@@ -52,7 +52,7 @@ def stage(folder: Path, source_url: str) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("space", help="owner/name, e.g. shiivamchauhan/voice-agent")
+    ap.add_argument("space", help="owner/name, e.g. shiivamchauhan/ai-interviewer")
     ap.add_argument("--secrets", action="store_true", help="copy the API keys from .env into the Space's secrets")
     ap.add_argument("--source", default="", help="link to the source code, shown on the Space's page")
     args = ap.parse_args()
