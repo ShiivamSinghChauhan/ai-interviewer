@@ -219,16 +219,17 @@ class BaseSession:
 
     async def run(self) -> None:
         self.worker.start()
-        loops = [asyncio.create_task(self._consume_events()), asyncio.create_task(self._tick())]
+        controls: asyncio.Queue = asyncio.Queue()
+        loops = [asyncio.create_task(self._consume_events()), asyncio.create_task(self._tick()),
+                 asyncio.create_task(self._consume_controls(controls))]
         try:
+            # Never stop reading: "begin" can wait minutes for the interview prep, and a socket nobody reads
+            # stops answering keepalive pings, so uvicorn closes it while the mic keeps streaming.
             while (msg := await self.ws.receive())["type"] != "websocket.disconnect":
                 if msg.get("bytes") is not None:
                     self.worker.push(msg["bytes"])
                 elif msg.get("text"):
-                    try:
-                        await self._control(json.loads(msg["text"]))
-                    except Exception:
-                        log.exception("control message failed")
+                    controls.put_nowait(msg["text"])
         finally:
             self.worker.stop()
             for task in (*loops, self.response_task):
@@ -237,6 +238,15 @@ class BaseSession:
             if self.started_at and not self.ended:  # the page closed mid-session: keep what there is
                 self.ended = True
                 await self.save(write_reports=False)
+
+    async def _consume_controls(self, controls: asyncio.Queue) -> None:
+        """The page's control messages, one at a time and in order."""
+        while True:
+            text = await controls.get()
+            try:
+                await self._control(json.loads(text))
+            except Exception:
+                log.exception("control message failed")
 
     async def _control(self, msg: dict) -> None:
         match msg.get("type"):
@@ -265,9 +275,9 @@ class BaseSession:
 
     async def _begin(self) -> None:
         self.worker.enroll_mode = False
-        self.worker.push(b"__reset__")
         self.spawn(self._warm())
         await self.ready()
+        self.worker.push(b"__reset__")  # whatever they said while the prep finished isn't an answer
         self.spawn(self._warm())  # sockets can go stale during a long interview prep
         self.started_at = self._commit_at = time.monotonic()
         if self.job:
