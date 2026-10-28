@@ -186,6 +186,7 @@ async function beginSetup(setupMsg, opts = {}) {
   $("#live-patience").innerHTML = Object.entries(S.meta.patience).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
   try { await startAudio(); } catch (err) { alert("Microphone access failed: " + err.message); return false; }
   await connect(S.mode, setupMsg);
+  sendMicInfo();
   $("#prep-card").classList.toggle("hidden", !opts.prep);
   $("#prep-steps").innerHTML = ""; $("#prep-plan").innerHTML = "";
   show("mic");

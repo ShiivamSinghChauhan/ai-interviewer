@@ -8,6 +8,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import math
 import struct
 import time
 from dataclasses import dataclass, field
@@ -233,6 +234,11 @@ class BaseSession:
             for task in (*loops, self.response_task):
                 if task:
                     task.cancel()
+            peak = self.worker.peak
+            log.info("%s closed after %.0f s: %.0f s of mic audio, loudest %s, %d answer(s)%s", self.mode,
+                     time.monotonic() - self.opened_at, self.worker.received_s,
+                     f"{20 * math.log10(peak):.0f} dBFS" if peak else "silence", len(self.turns),
+                     "" if self.started_at else ", never started")
             if self.started_at and not self.ended:  # the page closed mid-session: keep what there is
                 self.ended = True
                 await self.save(write_reports=False)
@@ -253,6 +259,9 @@ class BaseSession:
                 self.worker.enroll_mode = True
             case "skip_enroll":
                 self.worker.enroll_mode = False
+                log.info("voice check skipped")
+            case "mic":  # which microphone the page opened: tells a silent mic from a deaf recognizer
+                log.info("mic: %s", {k: msg.get(k) for k in ("label", "muted", "track_rate", "rate", "state")})
             case "begin" if not self.started_at:
                 await self._begin()
             case "end_turn":
@@ -318,10 +327,12 @@ class BaseSession:
             case "debug":
                 await self.send({"type": "debug", **ev})
             case "enrolled":
+                log.info("voice check passed (%d words)", len(ev["text"].split()))
                 self.spawn(self._measure_baseline(ev))
                 await self.send({"type": "enrolled", "text": self.normalize(ev["text"]), "voiced": ev["voiced"],
                                  "speaker_gate": self.models.speaker is not None})
             case "enroll_failed":
+                log.info("voice check too short (%d words)", len(ev.get("text", "").split()))
                 await self.send({"type": "enroll_failed", **ev})
 
     async def _on_turn_started(self) -> None:
